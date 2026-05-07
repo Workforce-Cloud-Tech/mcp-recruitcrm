@@ -15,10 +15,13 @@ import {
   mapCandidateHiringStagesResult,
   mapJobStatusesResult,
   mapCandidateJobAssignmentHiringStageHistoryResult,
+  mapCreateCandidateResult,
   mapCreateHotlistResult,
+  mapCreateMeetingResult,
   mapCreateNoteResult,
   mapCreateTaskResult,
   mapJobAssignedCandidatesResult,
+  mapListMeetingTypesResult,
   mapListNoteTypesResult,
   mapListTaskTypesResult,
   mapListUsersResult,
@@ -53,8 +56,14 @@ import {
   type SearchCallLogsInput,
   type SearchCallLogsResult,
   type CandidateJobAssignmentHiringStageHistoryResult,
+  type CandidateHistoryCreateResponse,
   type CreateHotlistInput,
   type CreateHotlistResult,
+  type CreateCandidateHistoryError,
+  type CreateCandidateInput,
+  type CreateCandidateResult,
+  type CreateMeetingInput,
+  type CreateMeetingResult,
   type CreateNoteInput,
   type CreateNoteResult,
   type CreateTaskInput,
@@ -81,10 +90,12 @@ import {
   type ListCompaniesInput,
   type ListContactsInput,
   type ListJobsInput,
+  type ListMeetingTypesResult,
   type ListNoteTypesResult,
   type ListTaskTypesResult,
   type ListUsersInput,
   type ListUsersResult,
+  type RecruitCrmMeetingType,
   type RecruitCrmNoteType,
   type RecruitCrmTaskType,
   type SearchCandidatesInput,
@@ -104,6 +115,7 @@ import {
   type SearchTasksInput,
   type SearchTasksResult,
   type RecruitCrmCandidateJobAssignmentHiringStageHistoryItem,
+  type CustomFieldDependenciesOutput,
 } from "./recruitcrm/types.js";
 
 const booleanLikeSchema = z
@@ -171,6 +183,120 @@ const listCandidatesInputSchema = {
     .describe(
       "Opt-in flag (default false). When true, each result also includes email, contact_number, and linkedin. Leave off for most requests; enable only when the user explicitly needs contact details, because it increases response size and exposes PII.",
     ),
+};
+
+const createCandidateScalarSchema = z.union([z.string().trim().min(1), z.number()]);
+const createCandidateCustomFieldValueSchema = z.union([
+  z.string(),
+  z.number(),
+  z.boolean(),
+  z.array(z.union([z.string(), z.number(), z.boolean()])),
+]);
+const createCandidateGenderIdSchema = z
+  .union([z.literal(0), z.literal(1), z.literal(2), z.literal(3), z.literal(4)])
+  .describe("Gender id: 0 not available, 1 male, 2 female, 3 non-binary, 4 prefer not to say.");
+const createCandidateWorkHistoryInputSchema = z.object({
+  title: textFilterSchema.optional().describe("Work title."),
+  work_company_name: textFilterSchema.optional().describe("Company name for this work history row."),
+  employment_type: z.coerce.number().int().positive().optional().describe("Recruit CRM employment type id."),
+  industry_id: z.coerce.number().int().positive().optional().describe("Recruit CRM industry id."),
+  work_location: textFilterSchema.optional().describe("Work location."),
+  salary: createCandidateScalarSchema.optional().describe("Salary for this work history row."),
+  is_currently_working: binaryNumberSchema.optional().describe("Current role flag: 1 current, 0 past."),
+  work_start_date: z.coerce.number().int().nonnegative().optional().describe("Work start date as Unix seconds."),
+  work_end_date: z.coerce.number().int().nonnegative().optional().describe("Work end date as Unix seconds."),
+  work_description: textFilterSchema.optional().describe("Work description."),
+});
+const createCandidateEducationHistoryInputSchema = z.object({
+  institute_name: textFilterSchema.optional().describe("Institute name."),
+  educational_qualification: textFilterSchema.optional().describe("Educational qualification."),
+  educational_specialization: textFilterSchema.optional().describe("Educational specialization."),
+  grade: textFilterSchema.optional().describe("Grade."),
+  education_location: textFilterSchema.optional().describe("Education location."),
+  education_start_date: z.coerce.number().int().nonnegative().optional().describe("Education start date as Unix seconds."),
+  education_end_date: z.coerce.number().int().nonnegative().optional().describe("Education end date as Unix seconds."),
+  education_description: textFilterSchema.optional().describe("Education description."),
+});
+const createCandidateInputSchema = {
+  first_name: textFilterSchema.optional().describe("Candidate first name. At least one of first_name or last_name is required."),
+  last_name: textFilterSchema.optional().describe("Candidate last name. At least one of first_name or last_name is required."),
+  email: textFilterSchema.optional().describe("Candidate email."),
+  contact_number: textFilterSchema.optional().describe("Candidate contact number."),
+  avatar: textFilterSchema.optional().describe("Candidate avatar URL."),
+  gender_id: createCandidateGenderIdSchema.optional(),
+  work_ex_year: z.coerce.number().nonnegative().optional().describe("Total work experience in years."),
+  currency_id: z.coerce.number().int().positive().optional().describe("Recruit CRM currency id."),
+  candidate_dob: textFilterSchema.optional().describe("Candidate date of birth, preferably YYYY-MM-DD."),
+  profile_updated_on: textFilterSchema.optional().describe("Profile updated date, preferably YYYY-MM-DD."),
+  current_salary: createCandidateScalarSchema.optional().describe("Current salary."),
+  salary_expectation: createCandidateScalarSchema.optional().describe("Salary expectation."),
+  willing_to_relocate: binaryNumberSchema.optional().describe("Relocation flag: 1 willing, 0 not willing."),
+  current_organization: textFilterSchema.optional().describe("Current organization name."),
+  current_organization_slug: textFilterSchema
+    .optional()
+    .describe("Current organization company slug. Use search_companies to resolve the company slug."),
+  current_status: textFilterSchema.optional().describe("Current candidate status."),
+  notice_period: z.coerce.number().int().nonnegative().optional().describe("Notice period in days."),
+  facebook: textFilterSchema.optional().describe("Facebook URL."),
+  twitter: textFilterSchema.optional().describe("Twitter/X URL."),
+  linkedin: textFilterSchema.optional().describe("LinkedIn URL."),
+  github: textFilterSchema.optional().describe("GitHub URL."),
+  xing: textFilterSchema.optional().describe("Xing URL."),
+  city: textFilterSchema.optional().describe("City."),
+  locality: textFilterSchema.optional().describe("Locality."),
+  state: textFilterSchema.optional().describe("State."),
+  country: textFilterSchema.optional().describe("Country."),
+  postal_code: textFilterSchema.optional().describe("Postal code."),
+  address: textFilterSchema.optional().describe("Street address."),
+  relevant_experience: z.coerce.number().nonnegative().optional().describe("Relevant experience in years."),
+  position: textFilterSchema.optional().describe("Candidate position/title."),
+  available_from: textFilterSchema.optional().describe("Available-from date, preferably YYYY-MM-DD."),
+  salary_type: z.coerce.number().int().positive().optional().describe("Recruit CRM salary type id."),
+  source: textFilterSchema.optional().describe("Candidate source. If the user doesn't specify, use the name of your AI assistant (e.g. 'Claude')."),
+  language_skills: z
+    .array(
+      z.object({
+        language_id: z.coerce.number().int().positive().describe("Recruit CRM language id."),
+        proficiency_id: z.coerce.number().int().positive().describe("Recruit CRM language proficiency id."),
+      }),
+    )
+    .optional()
+    .describe("Candidate language skills."),
+  skill: textFilterSchema.optional().describe("Comma-separated candidate skills."),
+  resume: textFilterSchema.optional().describe("Resume URL."),
+  owner_id: z.coerce.number().int().positive().optional().describe("Candidate owner user ID. Required when creating. Use list_users to resolve."),
+  created_by: z.coerce.number().int().positive().optional().describe("Creating user ID. Required when creating. Use list_users to resolve."),
+  updated_by: z.coerce.number().int().positive().optional().describe("Updating user ID. Required when updating. Defaults to created_by on create if omitted."),
+  custom_fields: z
+    .array(
+      z.object({
+        field_id: z.coerce.number().int().positive().describe("Candidate custom field id."),
+        value: createCandidateCustomFieldValueSchema.describe(
+          "Custom field value. For dropdown or multiselect fields use get_candidate_custom_field_details to confirm valid option values before setting.",
+        ),
+      }),
+    )
+    .optional()
+    .describe("Candidate custom field values. Always call list_candidate_custom_fields first to resolve field_id, then get_candidate_custom_field_details for any dropdown or multiselect field to confirm valid option values."),
+  candidate_summary: z.string().trim().min(1).optional().describe("Candidate summary. Supports basic HTML/rich text."),
+  work_history: z
+    .array(createCandidateWorkHistoryInputSchema)
+    .max(10)
+    .optional()
+    .describe("Latest work history rows to create after the candidate is created or updated. Max 10 rows."),
+  education_history: z
+    .array(createCandidateEducationHistoryInputSchema)
+    .max(10)
+    .optional()
+    .describe("Latest education history rows to create after the candidate is created or updated. Max 10 rows."),
+  existing_candidate_slug: textFilterSchema
+    .optional()
+    .describe(
+      "Existing candidate slug to update instead of creating a new candidate. Use only after duplicate search and explicit user confirmation.",
+    ),
+  allow_duplicate: booleanLikeSchema
+    .optional()
+    .describe("Set true only after duplicate search and explicit user confirmation to create a duplicate candidate."),
 };
 
 const listJobsInputSchema = {
@@ -521,6 +647,37 @@ const searchCandidatesOutputSchema = {
   candidates: z.array(candidateSummarySchema),
 };
 
+const createCandidateHistoryOperationOutputSchema = z.object({
+  requested_count: z.number().int().min(0),
+  successful: z.boolean(),
+  status_code: nullableNumberSchema,
+  message: nullableStringSchema,
+});
+
+const createCandidateHistoryErrorOutputSchema = z.object({
+  source: z.enum(["work_history", "education_history"]),
+  error: z.string(),
+  status_code: nullableNumberSchema,
+});
+
+const createCandidateOutputSchema = {
+  action: z.enum(["created", "updated"]),
+  candidate_slug: z.string(),
+  candidate_id: nullableNumberSchema,
+  first_name: nullableStringSchema,
+  last_name: nullableStringSchema,
+  position: nullableStringSchema,
+  current_organization: nullableStringSchema,
+  current_status: nullableStringSchema,
+  owner: nullableNumberSchema,
+  created_on: nullableStringSchema,
+  updated_on: nullableStringSchema,
+  view_url: nullableStringSchema,
+  work_history: createCandidateHistoryOperationOutputSchema,
+  education_history: createCandidateHistoryOperationOutputSchema,
+  errors: z.array(createCandidateHistoryErrorOutputSchema),
+};
+
 const jobStatusSummarySchema = z.object({
   id: nullableNumberSchema,
   label: nullableStringSchema,
@@ -814,6 +971,125 @@ const searchMeetingsOutputSchema = {
   returned_count: z.number().int().min(0),
   has_more: z.boolean(),
   meetings: z.array(meetingSummarySchema),
+};
+
+const listMeetingTypesOutputSchema = {
+  returned_count: z.number().int().min(0),
+  meeting_types: z.array(meetingTypeSummarySchema),
+};
+
+const meetingReminderSchema = z
+  .union([
+    z.literal("-1"),
+    z.literal("0"),
+    z.literal("15"),
+    z.literal("30"),
+    z.literal("60"),
+    z.literal("120"),
+    z.literal("1440"),
+    z.literal(-1),
+    z.literal(0),
+    z.literal(15),
+    z.literal(30),
+    z.literal(60),
+    z.literal(120),
+    z.literal(1440),
+  ])
+  .transform((value) => Number(value) as -1 | 0 | 15 | 30 | 60 | 120 | 1440);
+const createMeetingAssociatedSlugsSchema = z.array(textFilterSchema).min(1);
+const createMeetingCollaboratorIdsSchema = z.array(z.coerce.number().int().positive()).min(1);
+const meetingRelatedToTypeSchema = z.enum(["candidate", "company", "contact", "job", "deal"]);
+
+const createMeetingInputSchema = {
+  title: textFilterSchema.describe("Meeting title."),
+  reminder: meetingReminderSchema.describe(
+    "Reminder ID: -1 No Reminder, 0 0 Min Before, 15 15 Min Before, 30 30 Min Before, 60 1 Hour Before, 120 2 Hours Before, 1440 1 Day Before.",
+  ),
+  start_date: textFilterSchema.describe("Meeting start date/time, preferably ISO 8601 (e.g. 2026-05-08T10:00:00.000000Z)."),
+  end_date: textFilterSchema.describe("Meeting end date/time, preferably ISO 8601 (e.g. 2026-05-08T11:00:00.000000Z)."),
+  owner_id: z.coerce
+    .number()
+    .int()
+    .positive()
+    .describe("Recruit CRM user id assigned to own the meeting. Use list_users to resolve a known user name or email; ask if unknown."),
+  created_by: z.coerce
+    .number()
+    .int()
+    .positive()
+    .describe("Recruit CRM user id creating the meeting. Often the same as owner_id; use list_users to resolve a known user name or email; ask if unknown."),
+  meeting_type_id: z.coerce
+    .number()
+    .int()
+    .positive()
+    .optional()
+    .describe("Recruit CRM meeting type id. Use list_meeting_types first and only pass an id returned by that tool."),
+  description: z.string().min(1).optional().describe("Meeting description."),
+  address: z.string().min(1).optional().describe("Meeting address or video call link."),
+  related_to: textFilterSchema.optional().describe("Associated entity slug. Must be used with related_to_type."),
+  related_to_type: meetingRelatedToTypeSchema.optional().describe("Associated entity type. Must be used with related_to."),
+  attendee_contacts: createMeetingAssociatedSlugsSchema
+    .optional()
+    .describe("Contact slugs attending the meeting. Sent as a comma-separated API field."),
+  attendee_candidates: createMeetingAssociatedSlugsSchema
+    .optional()
+    .describe("Candidate slugs attending the meeting. Sent as a comma-separated API field."),
+  attendee_users: createMeetingCollaboratorIdsSchema
+    .optional()
+    .describe("User IDs attending the meeting. Sent as a comma-separated API field."),
+  updated_by: z.coerce.number().int().positive().optional().describe("Recruit CRM user id updating the meeting."),
+  associated_candidates: createMeetingAssociatedSlugsSchema
+    .optional()
+    .describe("Additional associated candidate slugs. Sent as a comma-separated API field."),
+  associated_companies: createMeetingAssociatedSlugsSchema
+    .optional()
+    .describe("Additional associated company slugs. Sent as a comma-separated API field."),
+  associated_contacts: createMeetingAssociatedSlugsSchema
+    .optional()
+    .describe("Additional associated contact slugs. Sent as a comma-separated API field."),
+  associated_jobs: createMeetingAssociatedSlugsSchema
+    .optional()
+    .describe("Additional associated job slugs. Sent as a comma-separated API field."),
+  associated_deals: createMeetingAssociatedSlugsSchema
+    .optional()
+    .describe("Additional associated deal slugs. Sent as a comma-separated API field."),
+  do_not_send_calendar_invites: booleanLikeSchema
+    .optional()
+    .describe("When true (default), calendar invites are NOT sent to attendees. Set to false only when the user explicitly requests sending invites."),
+  enable_auto_populate_teams: booleanLikeSchema
+    .optional()
+    .describe("When true (default), Recruit CRM auto-populates teams for the owner_id user/account owner unless collaborator_team_ids is provided."),
+  collaborator_user_ids: createMeetingCollaboratorIdsSchema
+    .optional()
+    .describe("Collaborator user IDs. Sent as a comma-separated API field."),
+  collaborator_team_ids: createMeetingCollaboratorIdsSchema
+    .optional()
+    .describe("Collaborator team IDs. Sent as a comma-separated API field."),
+};
+
+const createMeetingOutputSchema = {
+  meeting_id: nullableNumberSchema,
+  title: nullableStringSchema,
+  meeting_type: z.union([meetingTypeSummarySchema, z.null()]),
+  description: nullableStringSchema,
+  address: nullableStringSchema,
+  reminder: nullableNumberSchema,
+  start_date: nullableStringSchema,
+  end_date: nullableStringSchema,
+  related_to: nullableStringSchema,
+  related_to_type: nullableStringSchema,
+  related_to_view_url: nullableStringSchema,
+  associated_candidates: z.array(z.string()),
+  associated_companies: z.array(z.string()),
+  associated_contacts: z.array(z.string()),
+  associated_jobs: z.array(z.string()),
+  associated_deals: z.array(z.string()),
+  owner: nullableNumberSchema,
+  created_on: nullableStringSchema,
+  updated_on: nullableStringSchema,
+  created_by: nullableNumberSchema,
+  updated_by: nullableNumberSchema,
+  collaborator_users: z.array(z.number()),
+  collaborator_teams: z.array(z.number()),
 };
 
 const noteTypeSummarySchema = z.object({
@@ -1263,7 +1539,7 @@ export function createRecruitCrmServer(dependencies: ServerDependencies = {}): M
   const client = new RecruitCrmClient(config, dependencies.transport);
   const server = new McpServer({
     name: "Recruit CRM MCP Server",
-    version: "0.5.2",
+    version: "0.6.1",
   });
 
   server.registerTool(
@@ -1292,6 +1568,23 @@ export function createRecruitCrmServer(dependencies: ServerDependencies = {}): M
       },
     },
     async (args) => formatResult(await executeListCandidates(client, args)),
+  );
+
+  server.registerTool(
+    "create_candidate",
+    {
+      description:
+        "Create or update one Recruit CRM candidate, then optionally create up to 10 latest work history rows and up to 10 latest education history rows using the resulting candidate slug. This tool modifies Recruit CRM data and should only be used when explicitly requested. Before calling create_candidate, always run search_candidates using any provided email, contact_number, or linkedin URL to check for duplicates. If a duplicate is found, ask the user whether to create a duplicate or update the existing candidate. To create a confirmed duplicate, pass allow_duplicate=true. To update, pass existing_candidate_slug; this uses POST /candidates/{candidate_slug} with the same candidate payload. Use list_users to resolve owner_id, created_by, and updated_by (owner_id and created_by are required on create); use search_companies to resolve current_organization_slug; if the user mentions any custom field, always call list_candidate_custom_fields first to get the field_id, then call get_candidate_custom_field_details for any dropdown or multiselect field to confirm valid option values — never guess field IDs or option values.",
+      inputSchema: createCandidateInputSchema,
+      outputSchema: createCandidateOutputSchema,
+      annotations: {
+        readOnlyHint: false,
+        destructiveHint: false,
+        idempotentHint: false,
+        openWorldHint: false,
+      },
+    },
+    async (args) => formatResult(await executeCreateCandidate(client, args as CreateCandidateInput)),
   );
 
   server.registerTool(
@@ -1497,6 +1790,37 @@ export function createRecruitCrmServer(dependencies: ServerDependencies = {}): M
       },
     },
     async (args) => formatResult(await executeSearchMeetings(client, args)),
+  );
+
+  server.registerTool(
+    "list_meeting_types",
+    {
+      description:
+        "List Recruit CRM meeting types and return compact id/label rows. Use this before create_meeting to resolve a requested meeting type label to meeting_type_id; if no type is requested, choose the most relevant available type before creating.",
+      inputSchema: {},
+      outputSchema: listMeetingTypesOutputSchema,
+      annotations: {
+        readOnlyHint: true,
+      },
+    },
+    async () => formatResult(await executeListMeetingTypes(client)),
+  );
+
+  server.registerTool(
+    "create_meeting",
+    {
+      description:
+        "Create one Recruit CRM meeting. This tool modifies data in Recruit CRM and should only be used when explicitly requested. Requires title, reminder, start_date, end_date, owner_id, and created_by. Use list_meeting_types first to resolve meeting_type_id if a type is needed. Use list_users to resolve owner_id and created_by from known names or emails; ask if unknown. Calendar invites are NOT sent by default — only set do_not_send_calendar_invites to false when the user explicitly requests sending invites. Returns compact output without the related entity payload.",
+      inputSchema: createMeetingInputSchema,
+      outputSchema: createMeetingOutputSchema,
+      annotations: {
+        readOnlyHint: false,
+        destructiveHint: false,
+        idempotentHint: false,
+        openWorldHint: false,
+      },
+    },
+    async (args) => formatResult(await executeCreateMeeting(client, args)),
   );
 
   server.registerTool(
@@ -1710,6 +2034,36 @@ export function createRecruitCrmServer(dependencies: ServerDependencies = {}): M
   );
 
   server.registerTool(
+    "get_custom_field_dependencies",
+    {
+      description:
+        "Get parent-child dependency relationships for custom fields of a given entity type " +
+        "(candidates, contacts, companies, jobs, deals). " +
+        "Optionally narrow to a specific field's dependency subtree via field_id (pass the parent or child field_id). " +
+        "Call this before setting a nested/child custom field — the parent field_id and its value " +
+        "must also be included in the custom_fields array, or the API will reject the request with a dependency error.",
+      inputSchema: {
+        entity_type: z
+          .enum(["candidates", "contacts", "companies", "jobs", "deals"])
+          .describe("Entity type to fetch custom field dependencies for."),
+        field_id: z.coerce
+          .number()
+          .int()
+          .positive()
+          .optional()
+          .describe(
+            "Optional: narrow results to the dependency subtree for a specific field ID (parent or child). Omit to fetch all dependencies for the entity type.",
+          ),
+      },
+      annotations: {
+        readOnlyHint: true,
+      },
+    },
+    async ({ entity_type, field_id }) =>
+      formatResult(await executeGetCustomFieldDependencies(client, entity_type, field_id)),
+  );
+
+  server.registerTool(
     "analyze_job_pipeline",
     {
       description:
@@ -1779,6 +2133,93 @@ export async function executeListCandidates(
   return mapSearchCandidatesResult(result, {
     includeContactInfo: args.include_contact_info ?? false,
   });
+}
+
+const CANDIDATE_URL_FIELDS = ["avatar", "facebook", "twitter", "linkedin", "github", "xing", "resume"] as const;
+
+function normalizeCandidateUrlField(value: string | undefined): string | undefined {
+  if (!value) return value;
+  return /^https?:\/\//i.test(value) ? value : `https://${value}`;
+}
+
+export async function executeCreateCandidate(
+  client: RecruitCrmClient,
+  args: CreateCandidateInput,
+): Promise<CreateCandidateResult> {
+  if (!args.first_name && !args.last_name) {
+    throw new RecruitCrmApiError("Either first_name or last_name is required to create or update a candidate.");
+  }
+
+  // Normalize URL fields — prepend https:// when scheme is missing
+  for (const field of CANDIDATE_URL_FIELDS) {
+    const val = args[field];
+    if (val) {
+      args = { ...args, [field]: normalizeCandidateUrlField(val) };
+    }
+  }
+
+  // Enforce owner/created_by on create, updated_by on update
+  if (!args.existing_candidate_slug) {
+    if (!args.owner_id) {
+      throw new RecruitCrmApiError("owner_id is required when creating a candidate. Use list_users to resolve the current user ID.");
+    }
+    if (!args.created_by) {
+      throw new RecruitCrmApiError("created_by is required when creating a candidate. Use list_users to resolve the current user ID.");
+    }
+    if (!args.updated_by) {
+      args = { ...args, updated_by: args.created_by };
+    }
+  } else {
+    if (!args.updated_by) {
+      throw new RecruitCrmApiError("updated_by is required when updating a candidate. Use list_users to resolve the current user ID.");
+    }
+  }
+
+  if (!args.existing_candidate_slug && !args.allow_duplicate) {
+    await assertNoCreateCandidateDuplicates(client, args);
+  }
+
+  const action = args.existing_candidate_slug ? "updated" : "created";
+  const candidate = args.existing_candidate_slug
+    ? await client.updateCandidate(args.existing_candidate_slug, args)
+    : await client.createCandidate(args);
+  const candidateSlug = candidate.slug;
+
+  if (!candidateSlug) {
+    throw new RecruitCrmApiError("Recruit CRM candidate response did not include a candidate slug.");
+  }
+
+  const errors: CreateCandidateHistoryError[] = [];
+  const workHistoryRequestedCount = args.work_history?.length ?? 0;
+  const educationHistoryRequestedCount = args.education_history?.length ?? 0;
+  let workHistoryResponse: CandidateHistoryCreateResponse | null = null;
+  let educationHistoryResponse: CandidateHistoryCreateResponse | null = null;
+
+  if (workHistoryRequestedCount > 0 && args.work_history) {
+    try {
+      workHistoryResponse = await client.createCandidateWorkHistory(candidateSlug, args.work_history);
+    } catch (error) {
+      errors.push(mapCreateCandidateHistoryError("work_history", error));
+    }
+  }
+
+  if (educationHistoryRequestedCount > 0 && args.education_history) {
+    try {
+      educationHistoryResponse = await client.createCandidateEducationHistory(candidateSlug, args.education_history);
+    } catch (error) {
+      errors.push(mapCreateCandidateHistoryError("education_history", error));
+    }
+  }
+
+  return mapCreateCandidateResult(
+    candidate,
+    action,
+    workHistoryRequestedCount,
+    workHistoryResponse,
+    educationHistoryRequestedCount,
+    educationHistoryResponse,
+    errors,
+  );
 }
 
 export async function executeListJobs(client: RecruitCrmClient, args: ListJobsInput): Promise<SearchJobsResult> {
@@ -2024,6 +2465,32 @@ export async function executeSearchMeetings(
   });
 
   return mapSearchMeetingsResult(result);
+}
+
+export async function executeListMeetingTypes(client: RecruitCrmClient): Promise<ListMeetingTypesResult> {
+  const result = await client.listMeetingTypes();
+
+  return mapListMeetingTypesResult(result);
+}
+
+export async function executeCreateMeeting(
+  client: RecruitCrmClient,
+  args: CreateMeetingInput,
+): Promise<CreateMeetingResult> {
+  if (args.meeting_type_id !== undefined) {
+    const meetingTypes = await client.listMeetingTypes();
+    validateMeetingTypeId(args.meeting_type_id, meetingTypes);
+  }
+
+  validateRelatedFilters(args);
+
+  const result = await client.createMeeting({
+    ...args,
+    do_not_send_calendar_invites: args.do_not_send_calendar_invites ?? true,
+    enable_auto_populate_teams: args.enable_auto_populate_teams ?? true,
+  });
+
+  return mapCreateMeetingResult(result);
 }
 
 export async function executeSearchNotes(client: RecruitCrmClient, args: SearchNotesInput): Promise<SearchNotesResult> {
@@ -2284,6 +2751,120 @@ export async function executeGetCandidateCustomFieldDetails(
   return mapCandidateCustomFieldDetail(field);
 }
 
+export async function executeGetCustomFieldDependencies(
+  client: RecruitCrmClient,
+  entityType: string,
+  fieldId?: number,
+): Promise<CustomFieldDependenciesOutput> {
+  return client.getCustomFieldDependencies(entityType, fieldId);
+}
+
+type CreateCandidateDuplicateSearchField = "email" | "contact_number" | "linkedin";
+
+type CreateCandidateDuplicateMatch = {
+  slug: string;
+  id: number | string | null;
+  first_name: string | null;
+  last_name: string | null;
+  matched_on: CreateCandidateDuplicateSearchField[];
+};
+
+async function assertNoCreateCandidateDuplicates(
+  client: RecruitCrmClient,
+  args: CreateCandidateInput,
+): Promise<void> {
+  const duplicateFields: Array<{ field: CreateCandidateDuplicateSearchField; value: string | undefined }> = [
+    { field: "email", value: args.email },
+    { field: "contact_number", value: args.contact_number },
+    { field: "linkedin", value: args.linkedin },
+  ].filter((item): item is { field: CreateCandidateDuplicateSearchField; value: string } => item.value !== undefined);
+
+  if (duplicateFields.length === 0) {
+    return;
+  }
+
+  const matches = new Map<string, CreateCandidateDuplicateMatch>();
+
+  for (const { field, value } of duplicateFields) {
+    let response;
+    const filters: SearchCandidatesInput = {
+      page: 1,
+      exact_search: true,
+      sort_by: "updatedon",
+      sort_order: "desc",
+    };
+    filters[field] = value;
+
+    try {
+      response = await client.searchCandidates(filters);
+    } catch (error) {
+      throw new RecruitCrmApiError(
+        `Unable to complete duplicate check for create_candidate using ${field}. Try search_candidates manually before creating the candidate.`,
+        error instanceof RecruitCrmApiError ? error.statusCode : undefined,
+        error,
+      );
+    }
+
+    for (const candidate of response.data) {
+      const existing = matches.get(candidate.slug);
+      if (existing) {
+        if (!existing.matched_on.includes(field)) {
+          existing.matched_on.push(field);
+        }
+        continue;
+      }
+
+      matches.set(candidate.slug, {
+        slug: candidate.slug,
+        id: candidate.id ?? null,
+        first_name: normalizeDuplicateCandidateName(candidate.first_name),
+        last_name: normalizeDuplicateCandidateName(candidate.last_name),
+        matched_on: [field],
+      });
+    }
+  }
+
+  if (matches.size === 0) {
+    return;
+  }
+
+  const examples = Array.from(matches.values())
+    .slice(0, 5)
+    .map((match) => {
+      const name = [match.first_name, match.last_name].filter(Boolean).join(" ");
+      const idLabel = match.id != null ? String(match.id) : "unavailable";
+      const label = name
+        ? `candidate_slug: ${match.slug} (candidate_id: ${idLabel}, ${name})`
+        : `candidate_slug: ${match.slug} (candidate_id: ${idLabel})`;
+      return `${label} matched on ${match.matched_on.join(", ")}`;
+    })
+    .join("; ");
+
+  throw new RecruitCrmApiError(
+    `Potential duplicate candidate found before create_candidate: ${examples}. Ask the user whether to create a duplicate or update an existing candidate. To create a confirmed duplicate, call create_candidate with allow_duplicate=true. To update, call create_candidate with existing_candidate_slug set to the chosen candidate slug.`,
+  );
+}
+
+function normalizeDuplicateCandidateName(value: string | number | null | undefined): string | null {
+  if (value === undefined || value === null) {
+    return null;
+  }
+
+  const normalized = String(value).trim();
+  return normalized === "" ? null : normalized;
+}
+
+function mapCreateCandidateHistoryError(
+  source: CreateCandidateHistoryError["source"],
+  error: unknown,
+): CreateCandidateHistoryError {
+  return {
+    source,
+    error: error instanceof Error ? error.message : String(error),
+    status_code: error instanceof RecruitCrmApiError ? error.statusCode ?? null : null,
+  };
+}
+
 function validateRelatedFilters(args: { related_to?: string; related_to_type?: string }): void {
   const hasRelatedTo = args.related_to !== undefined;
   const hasRelatedToType = args.related_to_type !== undefined;
@@ -2342,6 +2923,32 @@ function validateTaskTypeId(taskTypeId: number, taskTypes: RecruitCrmTaskType[])
 
   throw new RecruitCrmApiError(
     `Unknown task_type_id ${taskTypeId}. Call list_task_types and use one of the returned task type IDs.${availableTypes ? ` Available examples: ${availableTypes}.` : ""}`,
+  );
+}
+
+function validateMeetingTypeId(meetingTypeId: number, meetingTypes: RecruitCrmMeetingType[]): void {
+  const match = meetingTypes.some((meetingType) => {
+    if (meetingType.id === undefined || meetingType.id === null || meetingType.id === "") {
+      return false;
+    }
+
+    return Number(meetingType.id) === meetingTypeId;
+  });
+
+  if (match) {
+    return;
+  }
+
+  const availableTypes = meetingTypes
+    .slice(0, 10)
+    .map((meetingType) => {
+      const label = meetingType.label === undefined || meetingType.label === null ? "Unlabeled" : String(meetingType.label);
+      return `${label} (${String(meetingType.id ?? "no id")})`;
+    })
+    .join(", ");
+
+  throw new RecruitCrmApiError(
+    `Unknown meeting_type_id ${meetingTypeId}. Call list_meeting_types and use one of the returned meeting type IDs.${availableTypes ? ` Available examples: ${availableTypes}.` : ""}`,
   );
 }
 
@@ -2449,9 +3056,12 @@ function formatResult(
     | SearchCallLogsResult
     | SearchTasksResult
     | ListUsersResult
+    | ListMeetingTypesResult
     | ListNoteTypesResult
     | ListTaskTypesResult
+    | CreateCandidateResult
     | CreateHotlistResult
+    | CreateMeetingResult
     | CreateNoteResult
     | CreateTaskResult
     | CandidateDetailsResult

@@ -2,9 +2,11 @@ import type {
   RecruitCrmCandidateCustomField,
   RecruitCrmCandidateJobAssignmentHiringStageHistoryResponse,
   RecruitCrmCallLogSearchResponse,
+  CandidateHistoryCreateResponse,
   CandidateDetail,
   CompanyDetail,
   ContactDetail,
+  CreatedCandidate,
   CreatedHotlist,
   CreatedNote,
   CreatedTask,
@@ -63,6 +65,28 @@ export const sampleSearchResponse: RecruitCrmSearchResponse = {
       owner: 10001,
     },
   ],
+};
+
+export const sampleCreatedCandidateResponse: CreatedCandidate = {
+  id: 46197,
+  slug: "candidate-created-sample-001",
+  first_name: "Create",
+  last_name: "Candidate",
+  position: "Senior Software Engineer",
+  current_organization: "Acme Labs",
+  current_status: "Active",
+  city: "Example City",
+  country: "Example Country",
+  owner: 453,
+  created_on: "2026-05-06T09:15:00.000000Z",
+  updated_on: "2026-05-06T09:15:00.000000Z",
+  resource_url: "https://app.recruitcrm.io/candidate/candidate-created-sample-001",
+};
+
+export const sampleCandidateHistoryCreateResponse: CandidateHistoryCreateResponse = {
+  success: true,
+  statusCode: 200,
+  message: "Candidate history created successfully.",
 };
 
 export const sampleJobAssignedCandidatesResponse: RecruitCrmJobAssignedCandidatesResponse = {

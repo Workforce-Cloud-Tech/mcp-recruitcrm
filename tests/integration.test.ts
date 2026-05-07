@@ -6,6 +6,7 @@ import { createRecruitCrmServer } from "../src/server.js";
 import type { HttpRequestOptions, HttpResponse } from "../src/recruitcrm/http.js";
 import {
   sampleCallLogSearchResponse,
+  sampleCandidateHistoryCreateResponse,
   sampleCandidateCustomFieldsResponse,
   sampleCandidateDetailResponse,
   sampleCandidateJobAssignmentHiringStageHistoryResponse,
@@ -13,6 +14,7 @@ import {
   sampleCompanySearchResponse,
   sampleContactDetailResponse,
   sampleContactSearchResponse,
+  sampleCreatedCandidateResponse,
   sampleCreatedHotlistResponse,
   sampleCreatedNoteResponse,
   sampleCreatedTaskResponse,
@@ -42,6 +44,14 @@ describe("Recruit CRM MCP tools", () => {
       }
 
       if (request.url.pathname.endsWith("/candidates/search")) {
+        if (request.url.searchParams.get("email") === "create.candidate@example.com") {
+          expect(request.url.searchParams.get("exact_search")).toBe("true");
+          return {
+            statusCode: 200,
+            bodyText: JSON.stringify([]),
+          };
+        }
+
         if (request.jsonBody) {
           expect(request.url.searchParams.get("first_name")).toBe("Sample");
           expect(request.jsonBody).toEqual({
@@ -58,6 +68,60 @@ describe("Recruit CRM MCP tools", () => {
         return {
           statusCode: 200,
           bodyText: JSON.stringify(sampleSearchResponse),
+        };
+      }
+
+      if (request.url.pathname.endsWith("/candidates")) {
+        expect(request.method).toBe("POST");
+        expect(request.jsonBody).toMatchObject({
+          first_name: "Create",
+          last_name: "Candidate",
+          email: "create.candidate@example.com",
+          owner_id: 453,
+          created_by: 453,
+        });
+        expect(request.jsonBody).not.toHaveProperty("work_history");
+        expect(request.jsonBody).not.toHaveProperty("education_history");
+        expect(request.jsonBody).not.toHaveProperty("allow_duplicate");
+
+        return {
+          statusCode: 200,
+          bodyText: JSON.stringify(sampleCreatedCandidateResponse),
+        };
+      }
+
+      if (request.url.pathname.endsWith("/candidates/work-history/create")) {
+        expect(request.method).toBe("POST");
+        expect(request.jsonBody).toEqual([
+          {
+            candidate_slug: "candidate-created-sample-001",
+            title: "Senior Engineer",
+            work_company_name: "Acme Labs",
+            is_currently_working: 1,
+            work_start_date: 1704067200,
+          },
+        ]);
+
+        return {
+          statusCode: 200,
+          bodyText: JSON.stringify(sampleCandidateHistoryCreateResponse),
+        };
+      }
+
+      if (request.url.pathname.endsWith("/candidates/education-history/create")) {
+        expect(request.method).toBe("POST");
+        expect(request.jsonBody).toEqual([
+          {
+            candidate_slug: "candidate-created-sample-001",
+            institute_name: "Example Institute",
+            educational_qualification: "Bachelor's Degree",
+            education_start_date: 1577836800,
+          },
+        ]);
+
+        return {
+          statusCode: 200,
+          bodyText: JSON.stringify(sampleCandidateHistoryCreateResponse),
         };
       }
 
@@ -329,6 +393,7 @@ describe("Recruit CRM MCP tools", () => {
     expect(tools.tools.map((tool) => tool.name)).toEqual([
       "search_candidates",
       "list_candidates",
+      "create_candidate",
       "search_jobs",
       "list_jobs",
       "search_companies",
@@ -343,6 +408,8 @@ describe("Recruit CRM MCP tools", () => {
       "list_task_types",
       "create_task",
       "search_meetings",
+      "list_meeting_types",
+      "create_meeting",
       "search_notes",
       "list_note_types",
       "create_note",
@@ -357,6 +424,7 @@ describe("Recruit CRM MCP tools", () => {
       "get_candidate_job_assignment_hiring_stage_history",
       "list_candidate_custom_fields",
       "get_candidate_custom_field_details",
+      "get_custom_field_dependencies",
       "analyze_job_pipeline",
     ]);
     const toolDescription = (name: string) => tools.tools.find((tool) => tool.name === name)?.description ?? "";
@@ -364,6 +432,9 @@ describe("Recruit CRM MCP tools", () => {
     expect(toolDescription("search_jobs")).toContain("owner_id");
     expect(toolDescription("list_jobs")).toContain("'my jobs'");
     expect(toolDescription("list_jobs")).toContain("search_jobs");
+    expect(toolDescription("create_candidate")).toContain("search_candidates");
+    expect(toolDescription("create_candidate")).toContain("allow_duplicate");
+    expect(toolDescription("create_candidate")).toContain("existing_candidate_slug");
     expect(toolDescription("search_notes")).toContain("does not support owner filters");
     expect(toolDescription("search_call_logs")).toContain("does not support owner filters");
     expect(tools.tools.find((tool) => tool.name === "create_hotlist")).toMatchObject({
@@ -375,6 +446,14 @@ describe("Recruit CRM MCP tools", () => {
       },
     });
     expect(tools.tools.find((tool) => tool.name === "add_records_to_hotlist")).toMatchObject({
+      annotations: {
+        readOnlyHint: false,
+        destructiveHint: false,
+        idempotentHint: false,
+        openWorldHint: false,
+      },
+    });
+    expect(tools.tools.find((tool) => tool.name === "create_candidate")).toMatchObject({
       annotations: {
         readOnlyHint: false,
         destructiveHint: false,
@@ -474,6 +553,55 @@ describe("Recruit CRM MCP tools", () => {
           updated_on: "2020-06-29T05:36:22.000000Z",
         },
       ],
+    });
+
+    const createCandidateResult = await client.callTool({
+      name: "create_candidate",
+      arguments: {
+        first_name: "Create",
+        last_name: "Candidate",
+        email: "create.candidate@example.com",
+        position: "Senior Software Engineer",
+        owner_id: 453,
+        created_by: 453,
+        work_history: [
+          {
+            title: "Senior Engineer",
+            work_company_name: "Acme Labs",
+            is_currently_working: 1,
+            work_start_date: 1704067200,
+          },
+        ],
+        education_history: [
+          {
+            institute_name: "Example Institute",
+            educational_qualification: "Bachelor's Degree",
+            education_start_date: 1577836800,
+          },
+        ],
+      },
+    });
+
+    expect(createCandidateResult.structuredContent).toMatchObject({
+      action: "created",
+      candidate_slug: "candidate-created-sample-001",
+      candidate_id: 46197,
+      first_name: "Create",
+      last_name: "Candidate",
+      position: "Senior Software Engineer",
+      owner: 453,
+      view_url: "https://app.recruitcrm.io/candidate/candidate-created-sample-001",
+      work_history: {
+        requested_count: 1,
+        successful: true,
+        status_code: 200,
+      },
+      education_history: {
+        requested_count: 1,
+        successful: true,
+        status_code: 200,
+      },
+      errors: [],
     });
 
     const detailResult = await client.callTool({
@@ -1331,7 +1459,7 @@ describe("Recruit CRM MCP tools", () => {
       (callLogResult.structuredContent as { call_logs: Array<Record<string, unknown>> }).call_logs[0],
     ).not.toHaveProperty("associated_candidates");
 
-    expect(transportMock).toHaveBeenCalledTimes(31);
+    expect(transportMock).toHaveBeenCalledTimes(35);
 
     await client.close();
     await server.close();

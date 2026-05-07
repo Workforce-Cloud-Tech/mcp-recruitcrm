@@ -6,14 +6,22 @@ import type {
   RecruitCrmJobStatusListResponse,
   CallLogSummary,
   CallLogTypeSummary,
+  CandidateHistoryCreateResponse,
   CandidateJobAssignmentHiringStageHistoryItem,
   CandidateJobAssignmentHiringStageHistoryResult,
   CandidateSummary,
   ContactSummary,
+  CreatedCandidate,
   CreatedHotlist,
+  CreatedMeeting,
   CreatedNote,
   CreatedTask,
+  CreateCandidateAction,
+  CreateCandidateHistoryError,
+  CreateCandidateHistoryOperationResult,
+  CreateCandidateResult,
   CreateHotlistResult,
+  CreateMeetingResult,
   CreateNoteResult,
   CreateTaskResult,
   HotlistSummary,
@@ -21,6 +29,7 @@ import type {
   CompanySummary,
   JobStatusSummary,
   JobSummary,
+  ListMeetingTypesResult,
   ListNoteTypesResult,
   ListTaskTypesResult,
   MeetingSummary,
@@ -50,6 +59,7 @@ import type {
   RecruitCrmMeeting,
   RecruitCrmMeetingSearchResponse,
   RecruitCrmMeetingType,
+  RecruitCrmMeetingTypeListResponse,
   HiringStageSummary,
   JobAssignedCandidatesResult,
   RecruitCrmNote,
@@ -163,6 +173,42 @@ export function mapCreateHotlistResult(hotlist: CreatedHotlist): CreateHotlistRe
     related_to_type: normalizeString(hotlist.related_to_type),
     shared: normalizeBoolean(hotlist.shared),
     created_by: normalizeNumber(hotlist.created_by),
+  };
+}
+
+export function mapCreateCandidateResult(
+  candidate: CreatedCandidate,
+  action: CreateCandidateAction,
+  workHistoryRequestedCount: number,
+  workHistoryResponse: CandidateHistoryCreateResponse | null,
+  educationHistoryRequestedCount: number,
+  educationHistoryResponse: CandidateHistoryCreateResponse | null,
+  errors: CreateCandidateHistoryError[] = [],
+): CreateCandidateResult {
+  const candidateSlug = normalizeString(candidate.slug) ?? "";
+
+  return {
+    action,
+    candidate_slug: candidateSlug,
+    candidate_id: normalizeNumber(candidate.id),
+    first_name: normalizeString(candidate.first_name),
+    last_name: normalizeString(candidate.last_name),
+    position: normalizeString(candidate.position),
+    current_organization: normalizeString(candidate.current_organization),
+    current_status: normalizeString(candidate.current_status),
+    owner: normalizeNumber(candidate.owner),
+    created_on: normalizeString(candidate.created_on),
+    updated_on: normalizeString(candidate.updated_on),
+    view_url: buildRecruitCrmEntityViewUrl("candidate", candidateSlug),
+    work_history: mapCreateCandidateHistoryOperation(
+      workHistoryRequestedCount,
+      workHistoryResponse,
+    ),
+    education_history: mapCreateCandidateHistoryOperation(
+      educationHistoryRequestedCount,
+      educationHistoryResponse,
+    ),
+    errors,
   };
 }
 
@@ -375,6 +421,48 @@ export function mapSearchMeetingsResult(response: RecruitCrmMeetingSearchRespons
     returned_count: response.data.length,
     has_more: hasNextPage(response.next_page_url),
     meetings: response.data.map(mapMeetingSummary),
+  };
+}
+
+export function mapListMeetingTypesResult(types: RecruitCrmMeetingTypeListResponse): ListMeetingTypesResult {
+  return {
+    returned_count: types.length,
+    meeting_types: types.map((t) => ({
+      id: normalizeIdentifier(t.id),
+      label: normalizeString(t.label),
+    })),
+  };
+}
+
+export function mapCreateMeetingResult(meeting: CreatedMeeting): CreateMeetingResult {
+  const relatedTo = normalizeString(meeting.related_to);
+  const relatedToType = normalizeString(meeting.related_to_type);
+  const meetingTypes = normalizeMeetingTypes(meeting.meeting_type);
+
+  return {
+    meeting_id: normalizeNumber(meeting.id),
+    title: normalizeString(meeting.title),
+    meeting_type: meetingTypes?.[0] ?? null,
+    description: normalizeStringPreserveWhitespace(meeting.description),
+    address: normalizeString(meeting.address),
+    reminder: normalizeNumber(meeting.reminder),
+    start_date: normalizeString(meeting.start_date),
+    end_date: normalizeString(meeting.end_date),
+    related_to: relatedTo,
+    related_to_type: relatedToType,
+    related_to_view_url: buildRecruitCrmEntityViewUrl(relatedToType, relatedTo),
+    associated_candidates: normalizeStringArray(meeting.associated_candidates),
+    associated_companies: normalizeStringArray(meeting.associated_companies),
+    associated_contacts: normalizeStringArray(meeting.associated_contacts),
+    associated_jobs: normalizeStringArray(meeting.associated_jobs),
+    associated_deals: normalizeStringArray(meeting.associated_deals),
+    owner: normalizeNumber(meeting.owner),
+    created_on: normalizeString(meeting.created_on),
+    updated_on: normalizeString(meeting.updated_on),
+    created_by: normalizeNumber(meeting.created_by),
+    updated_by: normalizeNumber(meeting.updated_by),
+    collaborator_users: normalizeMeetingCollaboratorIds(meeting.collaborator_users),
+    collaborator_teams: normalizeMeetingCollaboratorIds(meeting.collaborator_teams),
   };
 }
 
@@ -610,6 +698,18 @@ function normalizeJobStatus(jobStatus: RecruitCrmJobStatus | null | undefined): 
 
 function hasNextPage(nextPageUrl: string | null | undefined): boolean {
   return Boolean(nextPageUrl && nextPageUrl !== "null");
+}
+
+function mapCreateCandidateHistoryOperation(
+  requestedCount: number,
+  response: CandidateHistoryCreateResponse | null,
+): CreateCandidateHistoryOperationResult {
+  return {
+    requested_count: requestedCount,
+    successful: response === null ? requestedCount === 0 : normalizeBoolean(response.success) ?? true,
+    status_code: normalizeNumber(response?.statusCode),
+    message: normalizeString(response?.message),
+  };
 }
 
 function normalizeString(value: string | number | null | undefined): string | null {
@@ -942,6 +1042,18 @@ function mapJobTypeCode(value: number): string | null {
     default:
       return null;
   }
+}
+
+function normalizeMeetingCollaboratorIds(
+  values: Array<number | string | null> | null | undefined,
+): number[] {
+  if (!values || values.length === 0) {
+    return [];
+  }
+
+  return values
+    .map((v) => normalizeNumber(v))
+    .filter((v): v is number => v !== null);
 }
 
 function normalizeMeetingTypes(

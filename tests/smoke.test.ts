@@ -33,6 +33,7 @@ describe("stdio smoke test", () => {
     expect(tools.tools.map((tool) => tool.name)).toEqual([
       "search_candidates",
       "list_candidates",
+      "create_candidate",
       "search_jobs",
       "list_jobs",
       "search_companies",
@@ -47,6 +48,8 @@ describe("stdio smoke test", () => {
       "list_task_types",
       "create_task",
       "search_meetings",
+      "list_meeting_types",
+      "create_meeting",
       "search_notes",
       "list_note_types",
       "create_note",
@@ -61,6 +64,7 @@ describe("stdio smoke test", () => {
       "get_candidate_job_assignment_hiring_stage_history",
       "list_candidate_custom_fields",
       "get_candidate_custom_field_details",
+      "get_custom_field_dependencies",
       "analyze_job_pipeline",
     ]);
 

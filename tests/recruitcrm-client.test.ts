@@ -4,6 +4,7 @@ import { RecruitCrmClient } from "../src/recruitcrm/client.js";
 import type { HttpRequestOptions, HttpResponse } from "../src/recruitcrm/http.js";
 import {
   sampleCallLogSearchResponse,
+  sampleCandidateHistoryCreateResponse,
   sampleHiringPipelineResponse,
   sampleCandidateJobAssignmentHiringStageHistoryResponse,
   sampleCandidateDetailResponse,
@@ -11,6 +12,7 @@ import {
   sampleCompanySearchResponse,
   sampleContactDetailResponse,
   sampleContactSearchResponse,
+  sampleCreatedCandidateResponse,
   sampleCreatedHotlistResponse,
   sampleCreatedNoteResponse,
   sampleCreatedTaskResponse,
@@ -1512,6 +1514,204 @@ describe("executeCreateHotlist", () => {
       shared: false,
       created_by: 453,
     });
+  });
+});
+
+describe("executeCreateCandidate", () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it("checks duplicates, creates the candidate, then creates work and education history", async () => {
+    const seenPaths: string[] = [];
+    const transport = vi.fn(async (request: HttpRequestOptions): Promise<HttpResponse> => {
+      seenPaths.push(request.url.pathname);
+
+      if (request.url.pathname.endsWith("/candidates/search")) {
+        expect(request.url.searchParams.get("email")).toBe("create.candidate@example.com");
+        expect(request.url.searchParams.get("exact_search")).toBe("true");
+        return {
+          statusCode: 200,
+          bodyText: JSON.stringify([]),
+        };
+      }
+
+      if (request.url.pathname.endsWith("/candidates")) {
+        expect(request.method).toBe("POST");
+        expect(request.jsonBody).toMatchObject({
+          first_name: "Create",
+          last_name: "Candidate",
+          email: "create.candidate@example.com",
+          owner_id: 453,
+          created_by: 453,
+        });
+        expect(request.jsonBody).not.toHaveProperty("work_history");
+        expect(request.jsonBody).not.toHaveProperty("education_history");
+        expect(request.jsonBody).not.toHaveProperty("existing_candidate_slug");
+
+        return {
+          statusCode: 200,
+          bodyText: JSON.stringify(sampleCreatedCandidateResponse),
+        };
+      }
+
+      if (request.url.pathname.endsWith("/candidates/work-history/create")) {
+        expect(request.method).toBe("POST");
+        expect(request.jsonBody).toEqual([
+          {
+            candidate_slug: "candidate-created-sample-001",
+            title: "Senior Engineer",
+            work_company_name: "Acme Labs",
+          },
+        ]);
+
+        return {
+          statusCode: 200,
+          bodyText: JSON.stringify(sampleCandidateHistoryCreateResponse),
+        };
+      }
+
+      if (request.url.pathname.endsWith("/candidates/education-history/create")) {
+        expect(request.method).toBe("POST");
+        expect(request.jsonBody).toEqual([
+          {
+            candidate_slug: "candidate-created-sample-001",
+            institute_name: "Example Institute",
+          },
+        ]);
+
+        return {
+          statusCode: 200,
+          bodyText: JSON.stringify(sampleCandidateHistoryCreateResponse),
+        };
+      }
+
+      throw new Error(`Unexpected request: ${request.url.toString()}`);
+    });
+    const client = new RecruitCrmClient(baseConfig, transport);
+
+    const { executeCreateCandidate } = await import("../src/server.js");
+    const result = await executeCreateCandidate(client, {
+      first_name: "Create",
+      last_name: "Candidate",
+      email: "create.candidate@example.com",
+      owner_id: 453,
+      created_by: 453,
+      work_history: [
+        {
+          title: "Senior Engineer",
+          work_company_name: "Acme Labs",
+        },
+      ],
+      education_history: [
+        {
+          institute_name: "Example Institute",
+        },
+      ],
+    });
+
+    expect(seenPaths).toEqual([
+      "/v1/candidates/search",
+      "/v1/candidates",
+      "/v1/candidates/work-history/create",
+      "/v1/candidates/education-history/create",
+    ]);
+    expect(result).toMatchObject({
+      action: "created",
+      candidate_slug: "candidate-created-sample-001",
+      candidate_id: 46197,
+      view_url: "https://app.recruitcrm.io/candidate/candidate-created-sample-001",
+      work_history: {
+        requested_count: 1,
+        successful: true,
+        status_code: 200,
+      },
+      education_history: {
+        requested_count: 1,
+        successful: true,
+        status_code: 200,
+      },
+      errors: [],
+    });
+  });
+
+  it("blocks candidate creation when duplicate search finds a match", async () => {
+    const transport = vi.fn(async (request: HttpRequestOptions): Promise<HttpResponse> => {
+      expect(request.url.pathname).toBe("/v1/candidates/search");
+      return {
+        statusCode: 200,
+        bodyText: JSON.stringify({
+          current_page: 1,
+          next_page_url: null,
+          data: [
+            {
+              slug: "candidate-duplicate-sample-001",
+              first_name: "Existing",
+              last_name: "Candidate",
+            },
+          ],
+        }),
+      };
+    });
+    const client = new RecruitCrmClient(baseConfig, transport);
+
+    const { executeCreateCandidate } = await import("../src/server.js");
+    await expect(
+      executeCreateCandidate(client, {
+        first_name: "Create",
+        last_name: "Candidate",
+        email: "duplicate@example.com",
+        owner_id: 453,
+        created_by: 453,
+      }),
+    ).rejects.toThrow(/Potential duplicate candidate found/);
+    expect(transport).toHaveBeenCalledTimes(1);
+  });
+
+  it("updates an existing duplicate candidate with the same tool when existing_candidate_slug is provided", async () => {
+    const transport = vi.fn(async (request: HttpRequestOptions): Promise<HttpResponse> => {
+      expect(request.url.pathname).toBe("/v1/candidates/candidate-duplicate-sample-001");
+      expect(request.method).toBe("POST");
+      expect(request.jsonBody).toMatchObject({
+        first_name: "Existing",
+        last_name: "Candidate",
+        updated_by: 453,
+      });
+      expect(request.jsonBody).not.toHaveProperty("existing_candidate_slug");
+
+      return {
+        statusCode: 200,
+        bodyText: JSON.stringify({
+          ...sampleCreatedCandidateResponse,
+          slug: "candidate-duplicate-sample-001",
+          first_name: "Existing",
+          last_name: "Candidate",
+        }),
+      };
+    });
+    const client = new RecruitCrmClient(baseConfig, transport);
+
+    const { executeCreateCandidate } = await import("../src/server.js");
+    const result = await executeCreateCandidate(client, {
+      first_name: "Existing",
+      last_name: "Candidate",
+      updated_by: 453,
+      existing_candidate_slug: "candidate-duplicate-sample-001",
+    });
+
+    expect(result).toMatchObject({
+      action: "updated",
+      candidate_slug: "candidate-duplicate-sample-001",
+      work_history: {
+        requested_count: 0,
+        successful: true,
+      },
+      education_history: {
+        requested_count: 0,
+        successful: true,
+      },
+    });
+    expect(transport).toHaveBeenCalledTimes(1);
   });
 });
 

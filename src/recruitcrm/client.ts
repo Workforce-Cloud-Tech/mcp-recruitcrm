@@ -11,12 +11,19 @@ import type {
   RecruitCrmJobAssignedCandidatesResponse,
   RecruitCrmCallLogSearchResponse,
   CandidateDetail,
+  CandidateHistoryCreateResponse,
   CompanyDetail,
   ContactDetail,
+  CreatedCandidate,
   CreatedHotlist,
+  CreatedMeeting,
   CreatedNote,
   CreatedTask,
+  CreateCandidateEducationHistoryInput,
+  CreateCandidateInput,
+  CreateCandidateWorkHistoryInput,
   CreateHotlistInput,
+  CreateMeetingInput,
   CreateNoteInput,
   CreateTaskInput,
   GetJobAssignedCandidatesInput,
@@ -31,6 +38,7 @@ import type {
   RecruitCrmHotlistSearchResponse,
   RecruitCrmJobSearchResponse,
   RecruitCrmMeetingSearchResponse,
+  RecruitCrmMeetingTypeListResponse,
   RecruitCrmNoteSearchResponse,
   RecruitCrmNoteTypeListResponse,
   RecruitCrmSearchResponse,
@@ -47,6 +55,7 @@ import type {
   SearchNotesInput,
   SearchTasksInput,
   SearchCandidateCustomFieldFilter,
+  CustomFieldDependenciesOutput,
 } from "./types.js";
 
 const nullableNumberOrStringSchema = z.union([z.number(), z.string(), z.null()]).optional();
@@ -54,15 +63,21 @@ const nullableStringLikeSchema = z.union([z.string(), z.number(), z.null()]).opt
 
 const candidateSchema = z
   .object({
+    id: nullableNumberOrStringSchema,
     slug: z.union([z.string(), z.number()]).transform((value) => String(value)),
     first_name: nullableStringLikeSchema,
     last_name: nullableStringLikeSchema,
+    email: nullableStringLikeSchema,
+    contact_number: nullableStringLikeSchema,
+    linkedin: nullableStringLikeSchema,
     current_organization: nullableStringLikeSchema,
     current_status: nullableStringLikeSchema,
     city: nullableStringLikeSchema,
     country: nullableStringLikeSchema,
     updated_on: nullableStringLikeSchema,
+    created_on: nullableStringLikeSchema,
     position: nullableStringLikeSchema,
+    resource_url: nullableStringLikeSchema,
   })
   .passthrough();
 
@@ -475,6 +490,18 @@ const meetingSearchResponseSchema = z
     ),
   ]);
 
+const meetingTypeListResponseSchema = z.array(meetingTypeSchema);
+
+const createdMeetingSchema = meetingSchema.extend({
+  associated_candidates: z.array(z.union([z.string(), z.number()])).optional(),
+  associated_companies: z.array(z.union([z.string(), z.number()])).optional(),
+  associated_contacts: z.array(z.union([z.string(), z.number()])).optional(),
+  associated_jobs: z.array(z.union([z.string(), z.number()])).optional(),
+  associated_deals: z.array(z.union([z.string(), z.number()])).optional(),
+  collaborator_users: z.array(z.union([z.number(), z.string()])).optional(),
+  collaborator_teams: z.array(z.union([z.number(), z.string()])).optional(),
+});
+
 const noteTypeSchema = z
   .object({
     id: nullableNumberOrStringSchema,
@@ -627,10 +654,28 @@ const candidateCustomFieldSchema = z
   .passthrough();
 
 const candidateCustomFieldsResponseSchema = z.array(candidateCustomFieldSchema);
+
+type NestedFieldNode = {
+  field_id: number;
+  field_name: string;
+  field_type: string;
+  dependency: Record<string, string> | unknown[];
+  visibility: Record<string, string> | unknown[];
+  children: Record<string, unknown> | unknown[];
+};
+
+const nestedCustomFieldsResponseSchema = z.record(z.string(), z.unknown());
 const candidateDetailSchema: z.ZodType<CandidateDetail> = z.object({}).passthrough();
 const companyDetailSchema: z.ZodType<CompanyDetail> = z.object({}).passthrough();
 const contactDetailSchema: z.ZodType<ContactDetail> = z.object({}).passthrough();
 const jobDetailSchema: z.ZodType<JobDetail> = z.object({}).passthrough();
+const candidateHistoryCreateResponseSchema: z.ZodType<CandidateHistoryCreateResponse> = z
+  .object({
+    success: z.union([z.boolean(), z.number(), z.string(), z.null()]).optional(),
+    statusCode: nullableNumberOrStringSchema,
+    message: nullableStringLikeSchema,
+  })
+  .passthrough();
 
 export class RecruitCrmClient {
   readonly #apiToken: string;
@@ -657,6 +702,51 @@ export class RecruitCrmClient {
     const request = buildListPaginationRequest(filters);
 
     return this.#requestJson("/candidates", searchResponseSchema, request, "Candidate");
+  }
+
+  async createCandidate(input: CreateCandidateInput): Promise<CreatedCandidate> {
+    const request = buildCreateCandidateRequest(input);
+
+    return this.#requestJson("/candidates", candidateSchema, request, "Candidate");
+  }
+
+  async updateCandidate(candidateSlug: string, input: CreateCandidateInput): Promise<CreatedCandidate> {
+    const request = buildCreateCandidateRequest(input);
+
+    return this.#requestJson(
+      `/candidates/${encodeURIComponent(candidateSlug)}`,
+      candidateSchema,
+      request,
+      "Candidate",
+    );
+  }
+
+  async createCandidateWorkHistory(
+    candidateSlug: string,
+    workHistory: CreateCandidateWorkHistoryInput[],
+  ): Promise<CandidateHistoryCreateResponse> {
+    const request = buildCreateCandidateWorkHistoryRequest(candidateSlug, workHistory);
+
+    return this.#requestJson(
+      "/candidates/work-history/create",
+      candidateHistoryCreateResponseSchema,
+      request,
+      "Candidate work history",
+    );
+  }
+
+  async createCandidateEducationHistory(
+    candidateSlug: string,
+    educationHistory: CreateCandidateEducationHistoryInput[],
+  ): Promise<CandidateHistoryCreateResponse> {
+    const request = buildCreateCandidateEducationHistoryRequest(candidateSlug, educationHistory);
+
+    return this.#requestJson(
+      "/candidates/education-history/create",
+      candidateHistoryCreateResponseSchema,
+      request,
+      "Candidate education history",
+    );
   }
 
   async getJobAssignedCandidates(
@@ -768,6 +858,16 @@ export class RecruitCrmClient {
     return this.#requestJson("/meetings/search", meetingSearchResponseSchema, request, "Meeting");
   }
 
+  async listMeetingTypes(): Promise<RecruitCrmMeetingTypeListResponse> {
+    return this.#requestJson("/meeting-types", meetingTypeListResponseSchema, {}, "Meeting type");
+  }
+
+  async createMeeting(input: CreateMeetingInput): Promise<CreatedMeeting> {
+    const request = buildCreateMeetingRequest(input);
+
+    return this.#requestJson("/meetings", createdMeetingSchema, request, "Meeting");
+  }
+
   async searchNotes(filters: SearchNotesInput): Promise<RecruitCrmNoteSearchResponse> {
     const request = buildSearchNotesRequest(filters);
 
@@ -839,6 +939,18 @@ export class RecruitCrmClient {
       {},
       "Candidate custom field",
     );
+  }
+
+  async getCustomFieldDependencies(entityType: string, fieldId?: number): Promise<CustomFieldDependenciesOutput> {
+    const query = new URLSearchParams({ entity_type: entityType });
+    if (fieldId !== undefined) query.set("field_id", String(fieldId));
+    const raw = await this.#requestJson(
+      "/nested-custom-fields",
+      nestedCustomFieldsResponseSchema,
+      { query },
+      "nested custom fields",
+    );
+    return buildCustomFieldDependenciesOutput(entityType, raw as Record<string, unknown>);
   }
 
   async listCandidateHiringStages(): Promise<RecruitCrmHiringPipelineResponse> {
@@ -996,6 +1108,39 @@ export function buildListPaginationRequest(
 
 export const buildListCandidatesRequest = buildListPaginationRequest;
 export const buildListContactsRequest = buildListPaginationRequest;
+
+export function buildCreateCandidateRequest(input: CreateCandidateInput): RequestOptions {
+  return {
+    method: "POST",
+    jsonBody: buildCreateCandidateBody(input),
+  };
+}
+
+export function buildCreateCandidateWorkHistoryRequest(
+  candidateSlug: string,
+  workHistory: CreateCandidateWorkHistoryInput[],
+): RequestOptions {
+  return {
+    method: "POST",
+    jsonBody: workHistory.map((entry) => ({
+      candidate_slug: candidateSlug,
+      ...stripUndefinedValues(entry),
+    })),
+  };
+}
+
+export function buildCreateCandidateEducationHistoryRequest(
+  candidateSlug: string,
+  educationHistory: CreateCandidateEducationHistoryInput[],
+): RequestOptions {
+  return {
+    method: "POST",
+    jsonBody: educationHistory.map((entry) => ({
+      candidate_slug: candidateSlug,
+      ...stripUndefinedValues(entry),
+    })),
+  };
+}
 
 export function buildSearchHotlistsRequest(filters: SearchHotlistsInput): GetRequestOptions {
   const query = new URLSearchParams();
@@ -1213,6 +1358,41 @@ export function buildSearchMeetingsRequest(filters: SearchMeetingsInput): GetReq
   return { query };
 }
 
+export function buildCreateMeetingRequest(input: CreateMeetingInput): RequestOptions {
+  const body: Record<string, unknown> = {
+    title: input.title,
+    reminder: input.reminder,
+    start_date: input.start_date,
+    end_date: input.end_date,
+    owner_id: input.owner_id,
+    created_by: input.created_by,
+    do_not_send_calendar_invites: input.do_not_send_calendar_invites ? 1 : 0,
+    enable_auto_populate_teams: input.enable_auto_populate_teams ? 1 : 0,
+  };
+
+  setOptionalNumberBody(body, "meeting_type_id", input.meeting_type_id);
+  setOptionalStringBody(body, "description", input.description);
+  setOptionalStringBody(body, "address", input.address);
+  setOptionalStringBody(body, "related_to", input.related_to);
+  setOptionalStringBody(body, "related_to_type", input.related_to_type);
+  setOptionalNumberBody(body, "updated_by", input.updated_by);
+  setOptionalCsvBody(body, "attendee_contacts", input.attendee_contacts);
+  setOptionalCsvBody(body, "attendee_candidates", input.attendee_candidates);
+  setOptionalCsvBody(body, "attendee_users", input.attendee_users);
+  setOptionalCsvBody(body, "associated_candidates", input.associated_candidates);
+  setOptionalCsvBody(body, "associated_companies", input.associated_companies);
+  setOptionalCsvBody(body, "associated_contacts", input.associated_contacts);
+  setOptionalCsvBody(body, "associated_jobs", input.associated_jobs);
+  setOptionalCsvBody(body, "associated_deals", input.associated_deals);
+  setOptionalCsvBody(body, "collaborator_user_ids", input.collaborator_user_ids);
+  setOptionalCsvBody(body, "collaborator_team_ids", input.collaborator_team_ids);
+
+  return {
+    method: "POST",
+    jsonBody: body,
+  };
+}
+
 export function buildSearchNotesRequest(filters: SearchNotesInput): GetRequestOptions {
   const query = new URLSearchParams();
   const page = normalizePage(filters.page);
@@ -1270,6 +1450,40 @@ export function buildSearchCallLogsRequest(filters: SearchCallLogsInput): GetReq
   setStringParam(query, "updated_to", filters.updated_to);
 
   return { query };
+}
+
+function buildCreateCandidateBody(input: CreateCandidateInput): Record<string, unknown> {
+  const {
+    work_history: _workHistory,
+    education_history: _educationHistory,
+    existing_candidate_slug: _existingCandidateSlug,
+    allow_duplicate: _allowDuplicate,
+    custom_fields,
+    ...candidateFields
+  } = input;
+
+  const body = stripUndefinedValues(candidateFields);
+
+  if (custom_fields !== undefined) {
+    body.custom_fields = custom_fields.map((cf) => ({
+      field_id: cf.field_id,
+      value: Array.isArray(cf.value) ? cf.value.join(",") : cf.value,
+    }));
+  }
+
+  return body;
+}
+
+function stripUndefinedValues(input: object): Record<string, unknown> {
+  const output: Record<string, unknown> = {};
+
+  for (const [key, value] of Object.entries(input)) {
+    if (value !== undefined) {
+      output[key] = value;
+    }
+  }
+
+  return output;
 }
 
 function setStringParam(params: URLSearchParams, key: string, value: string | undefined): void {
@@ -1333,6 +1547,64 @@ function buildSearchCandidatesCustomFieldsBody(
       filter_value: filter.filter_value,
     };
   });
+}
+
+function buildCustomFieldDependenciesOutput(
+  entityType: string,
+  raw: Record<string, unknown>,
+): CustomFieldDependenciesOutput {
+  const dependencies: CustomFieldDependenciesOutput["dependencies"] = [];
+
+  function collectDependencies(parent: NestedFieldNode, children: Record<string, unknown> | unknown[]): void {
+    if (Array.isArray(children)) return;
+    for (const child of Object.values(children)) {
+      const dep = child as NestedFieldNode;
+      const depIsObj = !Array.isArray(dep.dependency) && typeof dep.dependency === "object" && dep.dependency !== null;
+      const visIsObj =
+        !Array.isArray(dep.visibility) && typeof dep.visibility === "object" && dep.visibility !== null;
+      const depMap = depIsObj ? (dep.dependency as Record<string, string>) : {};
+      const visMap = visIsObj ? (dep.visibility as Record<string, string>) : {};
+
+      if (depIsObj && Object.keys(depMap).length > 0) {
+        const parentOptionToChildOptions: Record<string, string[]> = {};
+        for (const [parentOption, childOptionsStr] of Object.entries(depMap)) {
+          parentOptionToChildOptions[parentOption] = childOptionsStr.split(",").map((s) => s.trim()).filter(Boolean);
+        }
+        dependencies.push({
+          parent_field_id: parent.field_id,
+          parent_field_name: parent.field_name,
+          parent_field_type: parent.field_type,
+          child_field_id: dep.field_id,
+          child_field_name: dep.field_name,
+          child_field_type: dep.field_type,
+          dependency_type: "value_filter",
+          parent_option_to_child_options: parentOptionToChildOptions,
+        });
+      } else if (visIsObj && Object.keys(visMap).length > 0) {
+        dependencies.push({
+          parent_field_id: parent.field_id,
+          parent_field_name: parent.field_name,
+          parent_field_type: parent.field_type,
+          child_field_id: dep.field_id,
+          child_field_name: dep.field_name,
+          child_field_type: dep.field_type,
+          dependency_type: "visibility",
+          visible_when_parent_is: Object.keys(visMap),
+        });
+      }
+
+      if (!Array.isArray(dep.children)) {
+        collectDependencies(dep, dep.children);
+      }
+    }
+  }
+
+  for (const topLevel of Object.values(raw)) {
+    const node = topLevel as NestedFieldNode;
+    collectDependencies(node, node.children);
+  }
+
+  return { entity_type: entityType, dependency_count: dependencies.length, dependencies };
 }
 
 function normalizePage(value: number | undefined): number {
