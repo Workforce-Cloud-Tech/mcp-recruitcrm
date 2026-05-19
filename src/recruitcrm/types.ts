@@ -325,6 +325,26 @@ export type SearchCallLogsInput = {
   updated_to?: string;
 };
 
+export type ListCandidateHiringStagesInput = {
+  hiring_pipeline_id?: number;
+};
+
+export type UpdateCandidateHiringStageInput = {
+  candidate_slug: string;
+  job_slug: string;
+  status_id: number;
+  remark?: string;
+  stage_date: string;
+  updated_by: number;
+  create_placement?: boolean;
+};
+
+export type AssignCandidateToJobInput = {
+  candidate_slug: string;
+  job_slug: string;
+  updated_by: number;
+};
+
 export type SearchJobsInput = {
   page?: number;
   city?: string;
@@ -468,6 +488,21 @@ export type RecruitCrmHiringStage = {
 
 export type RecruitCrmHiringPipelineResponse = RecruitCrmHiringStage[];
 
+export type RecruitCrmCandidateHiringStageUpdateResponse = {
+  job_slug?: string | number | null;
+  candidate_slug?: string | number | null;
+  status?: RecruitCrmAssignedCandidateStatus | null;
+  remark?: string | number | null;
+  stage_date?: string | number | null;
+  visibility?: number | string | boolean | null;
+  shared_list_url?: string | number | null;
+  updated_on?: string | number | null;
+  updated_by?: number | string | null;
+  [key: string]: unknown;
+};
+
+export type RecruitCrmCandidateJobAssignmentResponse = RecruitCrmCandidateHiringStageUpdateResponse;
+
 export type RecruitCrmJobStatus = {
   id?: number | string | null;
   label?: string | number | null;
@@ -512,6 +547,7 @@ export type RecruitCrmJob = {
   created_on?: string | number | null;
   updated_on?: string | number | null;
   owner?: number | string | null;
+  hiring_pipeline_id?: number | string | null;
   [key: string]: unknown;
 };
 
@@ -1237,6 +1273,7 @@ export type JobSummary = {
   owner: number | null;
   created_on: string | null;
   updated_on: string | null;
+  hiring_pipeline_id: number | null;
 };
 
 export type SearchJobsResult = {
@@ -1647,6 +1684,7 @@ export type AnalyzeJobPipelineResult = {
     owner: number | null;
     owner_name: string | null;
     company_slug: string | null;
+    hiring_pipeline_id: number | null;
     created_on: string | null;
     days_open: number | null;
     number_of_openings: number | null;
@@ -1700,3 +1738,18 @@ export type CustomFieldDependenciesOutput = {
   dependency_count: number;
   dependencies: CustomFieldDependencyEntry[];
 };
+
+export type UpdateCandidateHiringStageResult = {
+  candidate_slug: string | null;
+  job_slug: string | null;
+  status_id: number | null;
+  status_label: string | null;
+  remark: string | null;
+  stage_date: string | null;
+  visibility: number | null;
+  shared_list_url: string | null;
+  updated_on: string | null;
+  updated_by: number | null;
+};
+
+export type AssignCandidateToJobResult = UpdateCandidateHiringStageResult;

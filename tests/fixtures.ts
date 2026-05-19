@@ -24,6 +24,8 @@ import type {
   RecruitCrmTaskSearchResponse,
   RecruitCrmTaskTypeListResponse,
   RecruitCrmUserListResponse,
+  RecruitCrmCandidateHiringStageUpdateResponse,
+  RecruitCrmCandidateJobAssignmentResponse,
 } from "../src/recruitcrm/types.js";
 
 export const sampleSearchResponse: RecruitCrmSearchResponse = {
@@ -263,6 +265,7 @@ export const sampleJobSearchResponse: RecruitCrmJobSearchResponse = {
       xml_feeds: [null],
       resource_url: "https://app.recruitcrm.io/job/job-sample-001",
       shared_job_image: "https://app.recruitcrm.io/assets/images/default-share.png",
+      hiring_pipeline_id: 5067,
       targetcompanies: [
         {
           name: "Sample Target Company",
@@ -271,6 +274,36 @@ export const sampleJobSearchResponse: RecruitCrmJobSearchResponse = {
       ],
     },
   ],
+};
+
+export const sampleCandidateHiringStageUpdateResponse: RecruitCrmCandidateHiringStageUpdateResponse = {
+  job_slug: "job-sample-001",
+  candidate_slug: "candidate-sample-001",
+  status: {
+    status_id: 7006,
+    label: "Reschedule Interview",
+  },
+  remark: "Rescheduled at candidate's request.",
+  stage_date: "2026-05-19T10:00:00.000000Z",
+  visibility: 1,
+  shared_list_url: null,
+  updated_on: "2026-05-19T10:01:00.000000Z",
+  updated_by: 42,
+};
+
+export const sampleCandidateJobAssignmentResponse: RecruitCrmCandidateJobAssignmentResponse = {
+  job_slug: "job-sample-001",
+  candidate_slug: "candidate-sample-001",
+  status: {
+    status_id: 1,
+    label: "Assigned",
+  },
+  remark: null,
+  stage_date: "2026-05-19T09:00:00.000000Z",
+  visibility: 1,
+  shared_list_url: null,
+  updated_on: "2026-05-19T09:01:00.000000Z",
+  updated_by: 42,
 };
 
 export const sampleCompanySearchResponse: RecruitCrmCompanySearchResponse = {

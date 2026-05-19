@@ -5,6 +5,8 @@ import type { HttpRequestOptions, HttpResponse } from "../src/recruitcrm/http.js
 import {
   sampleCallLogSearchResponse,
   sampleCandidateHistoryCreateResponse,
+  sampleCandidateHiringStageUpdateResponse,
+  sampleCandidateJobAssignmentResponse,
   sampleHiringPipelineResponse,
   sampleCandidateJobAssignmentHiringStageHistoryResponse,
   sampleCandidateDetailResponse,
@@ -141,7 +143,7 @@ describe("RecruitCrmClient", () => {
 
   it("parses hiring pipeline payloads and tolerates status_id-backed rows", async () => {
     const transport = vi.fn(async (request: HttpRequestOptions): Promise<HttpResponse> => {
-      expect(request.url.pathname).toBe("/v1/hiring-pipeline");
+      expect(request.url.pathname).toBe("/v1/hiring-pipelines/0");
 
       return {
         statusCode: 200,
@@ -150,9 +152,129 @@ describe("RecruitCrmClient", () => {
     });
     const client = new RecruitCrmClient(baseConfig, transport);
 
-    const result = await client.listCandidateHiringStages();
+    const result = await client.listCandidateHiringStages({ hiring_pipeline_id: 0 });
 
     expect(result).toEqual(sampleHiringPipelineResponse);
+  });
+
+  it("fetches a job-specific hiring pipeline by id", async () => {
+    const transport = vi.fn(async (request: HttpRequestOptions): Promise<HttpResponse> => {
+      expect(request.url.pathname).toBe("/v1/hiring-pipelines/5067");
+
+      return {
+        statusCode: 200,
+        bodyText: JSON.stringify(sampleHiringPipelineResponse),
+      };
+    });
+    const client = new RecruitCrmClient(baseConfig, transport);
+
+    const result = await client.listCandidateHiringStages({ hiring_pipeline_id: 5067 });
+
+    expect(result).toEqual(sampleHiringPipelineResponse);
+  });
+
+  it("posts to the correct path and returns a mapped hiring stage update response", async () => {
+    const transport = vi.fn(async (request: HttpRequestOptions): Promise<HttpResponse> => {
+      expect(request.url.pathname).toBe("/v1/candidates/candidate-sample-001/hiring-stages/job-sample-001");
+      expect(request.method).toBe("POST");
+
+      return {
+        statusCode: 200,
+        bodyText: JSON.stringify(sampleCandidateHiringStageUpdateResponse),
+      };
+    });
+    const client = new RecruitCrmClient(baseConfig, transport);
+
+    const result = await client.updateCandidateHiringStage({
+      candidate_slug: "candidate-sample-001",
+      job_slug: "job-sample-001",
+      status_id: 7006,
+      stage_date: "2026-05-19T10:00:00Z",
+      updated_by: 42,
+    });
+
+    expect(result).toMatchObject({
+      candidate_slug: "candidate-sample-001",
+      job_slug: "job-sample-001",
+    });
+  });
+
+  it("throws a 'did not confirm' error when updateCandidateHiringStage returns an empty body", async () => {
+    const transport = vi.fn(async (_request: HttpRequestOptions): Promise<HttpResponse> => ({
+      statusCode: 200,
+      bodyText: "{}",
+    }));
+    const client = new RecruitCrmClient(baseConfig, transport);
+
+    await expect(
+      client.updateCandidateHiringStage({
+        candidate_slug: "candidate-sample-001",
+        job_slug: "job-sample-001",
+        status_id: 7006,
+        stage_date: "2026-05-19T10:00:00Z",
+        updated_by: 42,
+      }),
+    ).rejects.toThrow("did not confirm the candidate hiring stage update");
+  });
+
+  it("posts to the assign endpoint with query params and returns an assignment response", async () => {
+    const transport = vi.fn(async (request: HttpRequestOptions): Promise<HttpResponse> => {
+      expect(request.url.pathname).toBe("/v1/candidates/candidate-sample-001/assign");
+      expect(request.method).toBe("POST");
+      expect(request.url.searchParams?.get("job_slug")).toBe("job-sample-001");
+      expect(request.url.searchParams?.get("updated_by")).toBe("42");
+
+      return {
+        statusCode: 200,
+        bodyText: JSON.stringify(sampleCandidateJobAssignmentResponse),
+      };
+    });
+    const client = new RecruitCrmClient(baseConfig, transport);
+
+    const result = await client.assignCandidateToJob({
+      candidate_slug: "candidate-sample-001",
+      job_slug: "job-sample-001",
+      updated_by: 42,
+    });
+
+    expect(result).toMatchObject({
+      candidate_slug: "candidate-sample-001",
+      job_slug: "job-sample-001",
+    });
+  });
+
+  it("throws a 'did not confirm' error when assignCandidateToJob returns an empty body", async () => {
+    const transport = vi.fn(async (_request: HttpRequestOptions): Promise<HttpResponse> => ({
+      statusCode: 200,
+      bodyText: "{}",
+    }));
+    const client = new RecruitCrmClient(baseConfig, transport);
+
+    await expect(
+      client.assignCandidateToJob({
+        candidate_slug: "candidate-sample-001",
+        job_slug: "job-sample-001",
+        updated_by: 42,
+      }),
+    ).rejects.toThrow("did not confirm the candidate job assignment");
+  });
+
+  it("maps a 404 with errorMessage about invalid updated_by to 'Invalid updater' error", async () => {
+    const transport = vi.fn(async (_request: HttpRequestOptions): Promise<HttpResponse> => ({
+      statusCode: 404,
+      bodyText: JSON.stringify({ errorMessage: "Updated By Id is not valid" }),
+    }));
+    const client = new RecruitCrmClient(baseConfig, transport);
+
+    await expect(
+      client.updateCandidateHiringStage({
+        candidate_slug: "candidate-sample-001",
+        job_slug: "job-sample-001",
+        status_id: 7006,
+        stage_date: "2026-05-19T10:00:00Z",
+        updated_by: 99999,
+      }),
+    ).rejects.toThrow(/Invalid updater/);
   });
 
   it("parses task search payloads while tolerating large nested related objects", async () => {

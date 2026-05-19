@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  buildAssignCandidateToJobRequest,
   buildCreateNoteRequest,
   buildCreateTaskRequest,
   buildListContactsRequest,
@@ -15,6 +16,7 @@ import {
   buildSearchMeetingsRequest,
   buildSearchNotesRequest,
   buildSearchTasksRequest,
+  buildUpdateCandidateHiringStageRequest,
 } from "../src/recruitcrm/client.js";
 
 describe("buildSearchCandidatesRequest", () => {
@@ -293,6 +295,53 @@ describe("buildSearchJobsRequest", () => {
     expect(request.query?.get("sort_by")).toBeNull();
     expect(request.query?.get("sort_order")).toBeNull();
     expect(request.jsonBody).toBeUndefined();
+  });
+
+  it("serializes job_status 0 as the string '0'", () => {
+    const request = buildSearchJobsRequest({
+      job_status: 0,
+    });
+
+    expect(request.query?.get("job_status")).toBe("0");
+  });
+});
+
+describe("buildUpdateCandidateHiringStageRequest", () => {
+  it("builds a POST JSON body with all required fields", () => {
+    const request = buildUpdateCandidateHiringStageRequest({
+      candidate_slug: "candidate-sample-001",
+      job_slug: "job-sample-001",
+      status_id: 7006,
+      remark: "Rescheduled.",
+      stage_date: "2026-05-19T10:00:00Z",
+      updated_by: 42,
+      create_placement: false,
+    });
+
+    expect(request.method).toBe("POST");
+    expect(request.query).toBeUndefined();
+    expect(request.jsonBody).toMatchObject({
+      status_id: 7006,
+      remark: "Rescheduled.",
+      stage_date: "2026-05-19T10:00:00Z",
+      updated_by: 42,
+      create_placement: false,
+    });
+  });
+});
+
+describe("buildAssignCandidateToJobRequest", () => {
+  it("builds a POST with query params and no JSON body", () => {
+    const request = buildAssignCandidateToJobRequest({
+      candidate_slug: "candidate-sample-001",
+      job_slug: "job-sample-001",
+      updated_by: 42,
+    });
+
+    expect(request.method).toBe("POST");
+    expect(request.jsonBody).toBeUndefined();
+    expect(request.query?.get("job_slug")).toBe("job-sample-001");
+    expect(request.query?.get("updated_by")).toBe("42");
   });
 });
 

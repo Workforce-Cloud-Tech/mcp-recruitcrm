@@ -170,7 +170,7 @@ describe("Recruit CRM MCP tools", () => {
         };
       }
 
-      if (request.url.pathname.endsWith("/hiring-pipeline")) {
+      if (/\/hiring-pipelines\/\d+$/.test(request.url.pathname)) {
         return {
           statusCode: 200,
           bodyText: JSON.stringify(sampleHiringPipelineResponse),
@@ -420,6 +420,8 @@ describe("Recruit CRM MCP tools", () => {
       "get_contact_details",
       "get_job_assigned_candidates",
       "list_candidate_hiring_stages",
+      "assign_candidate_to_job",
+      "update_candidate_hiring_stage",
       "list_job_statuses",
       "get_candidate_job_assignment_hiring_stage_history",
       "list_candidate_custom_fields",
@@ -456,7 +458,7 @@ describe("Recruit CRM MCP tools", () => {
     expect(tools.tools.find((tool) => tool.name === "create_candidate")).toMatchObject({
       annotations: {
         readOnlyHint: false,
-        destructiveHint: false,
+        destructiveHint: true,
         idempotentHint: false,
         openWorldHint: false,
       },

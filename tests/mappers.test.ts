@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  mapAssignCandidateToJobResult,
   mapCallLogSummary,
   mapCandidateHiringStagesResult,
   mapCandidateJobAssignmentHiringStageHistoryItem,
@@ -30,11 +31,14 @@ import {
   mapSearchTasksResult,
   mapNoteSummary,
   mapTaskSummary,
+  mapUpdateCandidateHiringStageResult,
   mapUserSummary,
 } from "../src/recruitcrm/mappers.js";
 import {
   sampleCallLogSearchResponse,
+  sampleCandidateHiringStageUpdateResponse,
   sampleCandidateJobAssignmentHiringStageHistoryResponse,
+  sampleCandidateJobAssignmentResponse,
   sampleCompanySearchResponse,
   sampleContactSearchResponse,
   sampleCreatedHotlistResponse,
@@ -376,6 +380,7 @@ describe("job mappers", () => {
       owner: 8772,
       created_on: "2026-04-01T09:15:00.000000Z",
       updated_on: "2026-04-07T10:30:00.000000Z",
+      hiring_pipeline_id: 5067,
     });
   });
 
@@ -945,5 +950,41 @@ describe("candidate job assignment hiring stage history mappers", () => {
 
     expect(summary.remark).toBeNull();
     expect(summary.updated_by).toBe(453);
+  });
+});
+
+describe("candidate hiring stage update mappers", () => {
+  it("maps update candidate hiring stage response into compact output", () => {
+    const result = mapUpdateCandidateHiringStageResult(sampleCandidateHiringStageUpdateResponse);
+
+    expect(result).toEqual({
+      candidate_slug: "candidate-sample-001",
+      job_slug: "job-sample-001",
+      status_id: 7006,
+      status_label: "Reschedule Interview",
+      remark: "Rescheduled at candidate's request.",
+      stage_date: "2026-05-19T10:00:00.000000Z",
+      visibility: 1,
+      shared_list_url: null,
+      updated_on: "2026-05-19T10:01:00.000000Z",
+      updated_by: 42,
+    });
+  });
+
+  it("maps assign candidate to job response into compact output", () => {
+    const result = mapAssignCandidateToJobResult(sampleCandidateJobAssignmentResponse);
+
+    expect(result).toEqual({
+      candidate_slug: "candidate-sample-001",
+      job_slug: "job-sample-001",
+      status_id: 1,
+      status_label: "Assigned",
+      remark: null,
+      stage_date: "2026-05-19T09:00:00.000000Z",
+      visibility: 1,
+      shared_list_url: null,
+      updated_on: "2026-05-19T09:01:00.000000Z",
+      updated_by: 42,
+    });
   });
 });

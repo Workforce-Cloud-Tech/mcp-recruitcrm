@@ -1,9 +1,13 @@
 import type {
   ActivityRelatedSummary,
+  AssignCandidateToJobResult,
   AssignedCandidateSummary,
   CandidateHiringStagesResult,
   JobStatusesResult,
+  RecruitCrmCandidateHiringStageUpdateResponse,
+  RecruitCrmCandidateJobAssignmentResponse,
   RecruitCrmJobStatusListResponse,
+  UpdateCandidateHiringStageResult,
   CallLogSummary,
   CallLogTypeSummary,
   CandidateHistoryCreateResponse,
@@ -266,6 +270,7 @@ export function mapJobSummary(job: RecruitCrmJob): JobSummary {
     owner: normalizeNumber(job.owner),
     created_on: normalizeString(job.created_on),
     updated_on: normalizeString(job.updated_on),
+    hiring_pipeline_id: normalizeNumber(job.hiring_pipeline_id),
   };
 }
 
@@ -547,6 +552,37 @@ export function mapJobStatusesResult(
       id: normalizeNumber(status.id),
       label: normalizeString(status.label),
     })),
+  };
+}
+
+export function mapUpdateCandidateHiringStageResult(
+  response: RecruitCrmCandidateHiringStageUpdateResponse,
+): UpdateCandidateHiringStageResult {
+  return mapCandidateJobAssignmentResponse(response);
+}
+
+export function mapAssignCandidateToJobResult(
+  response: RecruitCrmCandidateJobAssignmentResponse,
+): AssignCandidateToJobResult {
+  return mapCandidateJobAssignmentResponse(response);
+}
+
+function mapCandidateJobAssignmentResponse(
+  response: RecruitCrmCandidateHiringStageUpdateResponse,
+): UpdateCandidateHiringStageResult {
+  return {
+    candidate_slug: normalizeString(response.candidate_slug),
+    job_slug: normalizeString(response.job_slug),
+    status_id: normalizeNumber(response.status?.status_id),
+    status_label: normalizeString(response.status?.label),
+    remark: normalizeString(response.remark),
+    stage_date: normalizeString(response.stage_date),
+    visibility: normalizeNumber(
+      typeof response.visibility === "boolean" ? Number(response.visibility) : response.visibility,
+    ),
+    shared_list_url: normalizeString(response.shared_list_url),
+    updated_on: normalizeString(response.updated_on),
+    updated_by: normalizeNumber(response.updated_by),
   };
 }
 

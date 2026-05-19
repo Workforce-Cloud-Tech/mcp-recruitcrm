@@ -29,10 +29,13 @@ import type {
   GetJobAssignedCandidatesInput,
   JobDetail,
   ListCandidatesInput,
+  ListCandidateHiringStagesInput,
   ListCompaniesInput,
   ListContactsInput,
   ListJobsInput,
   ListUsersInput,
+  RecruitCrmCandidateHiringStageUpdateResponse,
+  RecruitCrmCandidateJobAssignmentResponse,
   RecruitCrmContactSearchResponse,
   RecruitCrmCompanySearchResponse,
   RecruitCrmHotlistSearchResponse,
@@ -54,6 +57,8 @@ import type {
   SearchMeetingsInput,
   SearchNotesInput,
   SearchTasksInput,
+  AssignCandidateToJobInput,
+  UpdateCandidateHiringStageInput,
   SearchCandidateCustomFieldFilter,
   CustomFieldDependenciesOutput,
 } from "./types.js";
@@ -140,6 +145,25 @@ const hiringStageSchema = z
 
 const hiringPipelineResponseSchema = z.array(hiringStageSchema);
 
+const candidateHiringStageUpdateResponseSchema = z
+  .object({
+    job_slug: z.union([z.string(), z.number()]),
+    candidate_slug: z.union([z.string(), z.number()]),
+    status: z
+      .object({
+        status_id: z.union([z.number(), z.string()]),
+        label: nullableStringLikeSchema,
+      })
+      .passthrough(),
+    remark: nullableStringLikeSchema,
+    stage_date: nullableStringLikeSchema,
+    visibility: z.union([z.number(), z.string(), z.boolean(), z.null()]).optional(),
+    shared_list_url: nullableStringLikeSchema,
+    updated_on: nullableStringLikeSchema,
+    updated_by: nullableNumberOrStringSchema,
+  })
+  .passthrough();
+
 const jobStatusSchema = z
   .object({
     id: nullableNumberOrStringSchema,
@@ -186,6 +210,7 @@ const jobSchema = z
     created_on: nullableStringLikeSchema,
     updated_on: nullableStringLikeSchema,
     owner: nullableNumberOrStringSchema,
+    hiring_pipeline_id: nullableNumberOrStringSchema,
   })
   .passthrough();
 
@@ -953,8 +978,60 @@ export class RecruitCrmClient {
     return buildCustomFieldDependenciesOutput(entityType, raw as Record<string, unknown>);
   }
 
-  async listCandidateHiringStages(): Promise<RecruitCrmHiringPipelineResponse> {
-    return this.#requestJson("/hiring-pipeline", hiringPipelineResponseSchema, {}, "Hiring pipeline");
+  async listCandidateHiringStages(
+    input: ListCandidateHiringStagesInput = {},
+  ): Promise<RecruitCrmHiringPipelineResponse> {
+    const pipelineId = input.hiring_pipeline_id ?? 0;
+    return this.#requestJson(
+      `/hiring-pipelines/${encodeURIComponent(String(pipelineId))}`,
+      hiringPipelineResponseSchema,
+      {},
+      "Hiring pipeline",
+    );
+  }
+
+  async updateCandidateHiringStage(
+    input: UpdateCandidateHiringStageInput,
+  ): Promise<RecruitCrmCandidateHiringStageUpdateResponse> {
+    const request = buildUpdateCandidateHiringStageRequest(input);
+    const path = `/candidates/${encodeURIComponent(input.candidate_slug)}/hiring-stages/${encodeURIComponent(input.job_slug)}`;
+    try {
+      return await this.#requestJson(path, candidateHiringStageUpdateResponseSchema, request, "Candidate hiring stage");
+    } catch (error) {
+      if (
+        error instanceof RecruitCrmApiError &&
+        error.message.startsWith("Recruit CRM API returned an unexpected response shape")
+      ) {
+        throw new RecruitCrmApiError(
+          "Recruit CRM did not confirm the candidate hiring stage update. The candidate/job assignment may not exist, updated_by may be invalid, or the stage may not be valid for this job's hiring pipeline.",
+          error.statusCode,
+          error,
+        );
+      }
+      throw error;
+    }
+  }
+
+  async assignCandidateToJob(
+    input: AssignCandidateToJobInput,
+  ): Promise<RecruitCrmCandidateJobAssignmentResponse> {
+    const request = buildAssignCandidateToJobRequest(input);
+    const path = `/candidates/${encodeURIComponent(input.candidate_slug)}/assign`;
+    try {
+      return await this.#requestJson(path, candidateHiringStageUpdateResponseSchema, request, "Candidate");
+    } catch (error) {
+      if (
+        error instanceof RecruitCrmApiError &&
+        error.message.startsWith("Recruit CRM API returned an unexpected response shape")
+      ) {
+        throw new RecruitCrmApiError(
+          "Recruit CRM did not confirm the candidate job assignment. The candidate or job may not exist, updated_by may be invalid, or the candidate may already be assigned to this job.",
+          error.statusCode,
+          error,
+        );
+      }
+      throw error;
+    }
   }
 
   async listJobStatuses(): Promise<RecruitCrmJobStatusListResponse> {
@@ -1524,6 +1601,26 @@ function setOptionalCsvBody(
   if (values !== undefined && values.length > 0) {
     body[key] = values.map((value) => String(value)).join(",");
   }
+}
+
+export function buildUpdateCandidateHiringStageRequest(input: UpdateCandidateHiringStageInput): RequestOptions {
+  return {
+    method: "POST",
+    jsonBody: stripUndefinedValues({
+      status_id: input.status_id,
+      remark: input.remark,
+      stage_date: input.stage_date,
+      updated_by: input.updated_by,
+      create_placement: input.create_placement,
+    }),
+  };
+}
+
+export function buildAssignCandidateToJobRequest(input: AssignCandidateToJobInput): RequestOptions {
+  const query = new URLSearchParams();
+  query.set("job_slug", input.job_slug);
+  query.set("updated_by", String(input.updated_by));
+  return { method: "POST", query };
 }
 
 function buildSearchCandidatesCustomFieldsBody(

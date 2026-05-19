@@ -12,6 +12,7 @@ import {
 } from "./recruitcrm/custom-fields.js";
 import type { HttpTransport } from "./recruitcrm/http.js";
 import {
+  mapAssignCandidateToJobResult,
   mapCandidateHiringStagesResult,
   mapJobStatusesResult,
   mapCandidateJobAssignmentHiringStageHistoryResult,
@@ -34,6 +35,7 @@ import {
   mapSearchMeetingsResult,
   mapSearchNotesResult,
   mapSearchTasksResult,
+  mapUpdateCandidateHiringStageResult,
 } from "./recruitcrm/mappers.js";
 import {
   type AddRecordsToHotlistInput,
@@ -116,6 +118,13 @@ import {
   type SearchTasksResult,
   type RecruitCrmCandidateJobAssignmentHiringStageHistoryItem,
   type CustomFieldDependenciesOutput,
+  type AssignCandidateToJobInput,
+  type AssignCandidateToJobResult,
+  type ListCandidateHiringStagesInput,
+  type RecruitCrmJob,
+  type RecruitCrmJobSearchResponse,
+  type UpdateCandidateHiringStageInput,
+  type UpdateCandidateHiringStageResult,
 } from "./recruitcrm/types.js";
 
 const booleanLikeSchema = z
@@ -372,7 +381,7 @@ const searchJobsInputSchema = {
   job_slug: textFilterSchema.optional().describe("Job slug. Other filters are ignored when provided."),
   job_status: z.coerce.number().int().optional().describe("Job status id."),
   job_type: jobTypeInputSchema.optional().describe("Job type."),
-  limit: z.coerce.number().int().min(1).optional().describe("Results per page."),
+  limit: z.coerce.number().int().min(1).max(100).optional().describe("Results per page. Max 100."),
   locality: textFilterSchema.optional().describe("Locality."),
   name: textFilterSchema.optional().describe("Job name."),
   note_for_candidates: textFilterSchema.optional().describe("Note for candidates."),
@@ -712,6 +721,7 @@ const jobSummarySchema = z.object({
   owner: nullableNumberSchema,
   created_on: nullableStringSchema,
   updated_on: nullableStringSchema,
+  hiring_pipeline_id: nullableNumberSchema,
 });
 
 const searchJobsOutputSchema = {
@@ -1231,9 +1241,59 @@ const hiringStageSummarySchema = z.object({
   label: nullableStringSchema,
 });
 
+const listCandidateHiringStagesInputSchema = {
+  hiring_pipeline_id: z.coerce
+    .number()
+    .int()
+    .min(0)
+    .optional()
+    .describe(
+      "Hiring pipeline id. Defaults to 0 for the Master Hiring Pipeline, which can be used when only a hiring stage ID is needed and no job context is required.",
+    ),
+};
+
 const listCandidateHiringStagesOutputSchema = {
   returned_count: z.number().int().min(0),
   stages: z.array(hiringStageSummarySchema),
+};
+
+const updateCandidateHiringStageOutputSchema = {
+  candidate_slug: nullableStringSchema,
+  job_slug: nullableStringSchema,
+  status_id: nullableNumberSchema,
+  status_label: nullableStringSchema,
+  remark: nullableStringSchema,
+  stage_date: nullableStringSchema,
+  visibility: nullableNumberSchema,
+  shared_list_url: nullableStringSchema,
+  updated_on: nullableStringSchema,
+  updated_by: nullableNumberSchema,
+};
+
+const assignCandidateToJobOutputSchema = updateCandidateHiringStageOutputSchema;
+
+const updateCandidateHiringStageInputSchema = {
+  candidate_slug: textFilterSchema.describe("Candidate slug."),
+  job_slug: textFilterSchema.describe("Job slug."),
+  status_id: z.coerce
+    .number()
+    .int()
+    .positive()
+    .describe(
+      "Candidate hiring stage id. Resolve with list_candidate_hiring_stages first; use hiring_pipeline_id 0 for master stages or the job's hiring_pipeline_id for job-specific stages.",
+    ),
+  remark: textFilterSchema.optional().describe("Remark. Supports basic HTML/rich text."),
+  stage_date: textFilterSchema.describe("Updated date/time, preferably ISO 8601."),
+  updated_by: z.coerce.number().int().positive().describe("Recruit CRM user id updating the hiring stage."),
+  create_placement: booleanLikeSchema
+    .optional()
+    .describe("Create placement flag. Defaults to false; set true only when the user explicitly wants a placement created."),
+};
+
+const assignCandidateToJobInputSchema = {
+  candidate_slug: textFilterSchema.describe("Candidate slug."),
+  job_slug: textFilterSchema.describe("Job slug."),
+  updated_by: z.coerce.number().int().positive().describe("Recruit CRM user id assigning the candidate to the job."),
 };
 
 const listJobStatusesOutputSchema = {
@@ -1338,6 +1398,24 @@ const candidateCustomFieldDetailOutputSchema = {
   option_values: z.union([z.array(z.string()), z.null()]),
 };
 
+const customFieldDependencyEntrySchema = z.object({
+  parent_field_id: z.number().int().positive(),
+  parent_field_name: z.string(),
+  parent_field_type: z.string(),
+  child_field_id: z.number().int().positive(),
+  child_field_name: z.string(),
+  child_field_type: z.string(),
+  dependency_type: z.enum(["value_filter", "visibility"]),
+  parent_option_to_child_options: z.record(z.string(), z.array(z.string())).optional(),
+  visible_when_parent_is: z.array(z.string()).optional(),
+});
+
+const getCustomFieldDependenciesOutputSchema = {
+  entity_type: z.string(),
+  dependency_count: z.number().int().min(0),
+  dependencies: z.array(customFieldDependencyEntrySchema),
+};
+
 const ANALYZE_JOB_PIPELINE_DEFAULTS = {
   startPage: 1,
   idleDaysThreshold: 14,
@@ -1425,6 +1503,7 @@ const analyzeJobPipelineOutputSchema = {
     owner: nullableNumberSchema,
     owner_name: nullableStringSchema,
     company_slug: nullableStringSchema,
+    hiring_pipeline_id: nullableNumberSchema,
     created_on: nullableStringSchema,
     days_open: nullableNumberSchema,
     number_of_openings: nullableNumberSchema,
@@ -1539,18 +1618,21 @@ export function createRecruitCrmServer(dependencies: ServerDependencies = {}): M
   const client = new RecruitCrmClient(config, dependencies.transport);
   const server = new McpServer({
     name: "Recruit CRM MCP Server",
-    version: "0.6.1",
+    version: "0.7.0",
   });
 
   server.registerTool(
     "search_candidates",
     {
+      title: "Search Candidates",
       description:
         `Search Recruit CRM candidates and return compact summaries designed for large result sets. ${myRecordsOwnerFilterGuidance} Returns candidate slug values that can be used with get_candidate_details or to open Recruit CRM app links like https://app.recruitcrm.io/candidate/{slug}.`,
       inputSchema: searchCandidatesInputSchema,
       outputSchema: searchCandidatesOutputSchema,
       annotations: {
         readOnlyHint: true,
+        destructiveHint: false,
+        openWorldHint: false,
       },
     },
     async (args) => formatResult(await executeSearchCandidates(client, args)),
@@ -1559,12 +1641,15 @@ export function createRecruitCrmServer(dependencies: ServerDependencies = {}): M
   server.registerTool(
     "list_candidates",
     {
+      title: "List Candidates",
       description:
         "List all candidates in the account, most-recently updated first. Use this for unfiltered 'show recent candidates' requests; use search_candidates when you have filter criteria like name, owner, date, or 'my candidates' ownership. Returns compact summaries with slug values for candidate detail lookup or app links like https://app.recruitcrm.io/candidate/{slug}.",
       inputSchema: listCandidatesInputSchema,
       outputSchema: searchCandidatesOutputSchema,
       annotations: {
         readOnlyHint: true,
+        destructiveHint: false,
+        openWorldHint: false,
       },
     },
     async (args) => formatResult(await executeListCandidates(client, args)),
@@ -1573,13 +1658,14 @@ export function createRecruitCrmServer(dependencies: ServerDependencies = {}): M
   server.registerTool(
     "create_candidate",
     {
+      title: "Create or Update Candidate",
       description:
         "Create or update one Recruit CRM candidate, then optionally create up to 10 latest work history rows and up to 10 latest education history rows using the resulting candidate slug. This tool modifies Recruit CRM data and should only be used when explicitly requested. Before calling create_candidate, always run search_candidates using any provided email, contact_number, or linkedin URL to check for duplicates. If a duplicate is found, ask the user whether to create a duplicate or update the existing candidate. To create a confirmed duplicate, pass allow_duplicate=true. To update, pass existing_candidate_slug; this uses POST /candidates/{candidate_slug} with the same candidate payload. Use list_users to resolve owner_id, created_by, and updated_by (owner_id and created_by are required on create); use search_companies to resolve current_organization_slug; if the user mentions any custom field, always call list_candidate_custom_fields first to get the field_id, then call get_candidate_custom_field_details for any dropdown or multiselect field to confirm valid option values — never guess field IDs or option values.",
       inputSchema: createCandidateInputSchema,
       outputSchema: createCandidateOutputSchema,
       annotations: {
         readOnlyHint: false,
-        destructiveHint: false,
+        destructiveHint: true,
         idempotentHint: false,
         openWorldHint: false,
       },
@@ -1590,12 +1676,15 @@ export function createRecruitCrmServer(dependencies: ServerDependencies = {}): M
   server.registerTool(
     "search_jobs",
     {
+      title: "Search Jobs",
       description:
-        `Search Recruit CRM jobs and return compact summaries designed for large result sets. ${myRecordsOwnerFilterGuidance} Returns slug, company_slug, and contact_slug values that can be used to open Recruit CRM app URLs like https://app.recruitcrm.io/job/{slug}, https://app.recruitcrm.io/company/{company_slug}, and https://app.recruitcrm.io/contact/{contact_slug}.`,
+        `Search Recruit CRM jobs and return compact summaries designed for large result sets. ${myRecordsOwnerFilterGuidance} Returns slug, company_slug, contact_slug, and hiring_pipeline_id values; use hiring_pipeline_id with list_candidate_hiring_stages for job-specific stage lookup. Slugs can be used to open Recruit CRM app URLs like https://app.recruitcrm.io/job/{slug}, https://app.recruitcrm.io/company/{company_slug}, and https://app.recruitcrm.io/contact/{contact_slug}.`,
       inputSchema: searchJobsInputSchema,
       outputSchema: searchJobsOutputSchema,
       annotations: {
         readOnlyHint: true,
+        destructiveHint: false,
+        openWorldHint: false,
       },
     },
     async (args) => formatResult(await executeSearchJobs(client, args)),
@@ -1604,12 +1693,15 @@ export function createRecruitCrmServer(dependencies: ServerDependencies = {}): M
   server.registerTool(
     "list_jobs",
     {
+      title: "List Jobs",
       description:
-        "List all jobs in the account, most-recently updated first. Use this for unfiltered 'show recent jobs' or 'show all jobs' requests; use search_jobs when you have filter criteria like company, status, name, owner, or 'my jobs' ownership. Returns compact summaries with slug, company_slug, and contact_slug values for app links.",
+        "List all jobs in the account, most-recently updated first. Use this for unfiltered 'show recent jobs' or 'show all jobs' requests; use search_jobs when you have filter criteria like company, status, name, owner, or 'my jobs' ownership. Returns compact summaries with slug, company_slug, contact_slug, and hiring_pipeline_id values; use hiring_pipeline_id with list_candidate_hiring_stages for job-specific stage lookup.",
       inputSchema: listJobsInputSchema,
       outputSchema: searchJobsOutputSchema,
       annotations: {
         readOnlyHint: true,
+        destructiveHint: false,
+        openWorldHint: false,
       },
     },
     async (args) => formatResult(await executeListJobs(client, args)),
@@ -1618,12 +1710,15 @@ export function createRecruitCrmServer(dependencies: ServerDependencies = {}): M
   server.registerTool(
     "search_companies",
     {
+      title: "Search Companies",
       description:
         `Search Recruit CRM companies and return compact summaries designed for large result sets. ${myRecordsOwnerFilterGuidance} Returns company slug values for Recruit CRM company links like https://app.recruitcrm.io/company/{slug} and contact_slugs values for contact links like https://app.recruitcrm.io/contact/{contact_slug}.`,
       inputSchema: searchCompaniesInputSchema,
       outputSchema: searchCompaniesOutputSchema,
       annotations: {
         readOnlyHint: true,
+        destructiveHint: false,
+        openWorldHint: false,
       },
     },
     async (args) => formatResult(await executeSearchCompanies(client, args)),
@@ -1632,12 +1727,15 @@ export function createRecruitCrmServer(dependencies: ServerDependencies = {}): M
   server.registerTool(
     "list_companies",
     {
+      title: "List Companies",
       description:
         "List all companies in the account, most-recently updated first. Use this for unfiltered 'show recent companies' or 'show all companies' requests; use search_companies when you have filter criteria like name, owner, or 'my companies' ownership. Returns compact summaries with slug and contact_slugs values for app links.",
       inputSchema: listCompaniesInputSchema,
       outputSchema: searchCompaniesOutputSchema,
       annotations: {
         readOnlyHint: true,
+        destructiveHint: false,
+        openWorldHint: false,
       },
     },
     async (args) => formatResult(await executeListCompanies(client, args)),
@@ -1646,12 +1744,15 @@ export function createRecruitCrmServer(dependencies: ServerDependencies = {}): M
   server.registerTool(
     "search_contacts",
     {
+      title: "Search Contacts",
       description:
         `Search Recruit CRM contacts with filters and return compact summaries for large result sets. ${myRecordsOwnerFilterGuidance} At least one real filter is required: sort_by, sort_order, page, exact_search, and include_contact_info do not count by themselves. Use list_contacts for unfiltered 'show recent contacts' or 'show all contacts' requests.`,
       inputSchema: searchContactsInputSchema,
       outputSchema: searchContactsOutputSchema,
       annotations: {
         readOnlyHint: true,
+        destructiveHint: false,
+        openWorldHint: false,
       },
     },
     async (args) => formatResult(await executeSearchContacts(client, args)),
@@ -1660,12 +1761,15 @@ export function createRecruitCrmServer(dependencies: ServerDependencies = {}): M
   server.registerTool(
     "list_contacts",
     {
+      title: "List Contacts",
       description:
         "List all contacts in the account, most-recently updated first. Use this for unfiltered 'show recent contacts' or 'show all contacts' requests; use search_contacts when you have filter criteria like name, company, owner, date, or 'my contacts' ownership. Returns compact summaries with slug values for contact detail lookup or app links like https://app.recruitcrm.io/contact/{slug}.",
       inputSchema: listContactsInputSchema,
       outputSchema: searchContactsOutputSchema,
       annotations: {
         readOnlyHint: true,
+        destructiveHint: false,
+        openWorldHint: false,
       },
     },
     async (args) => formatResult(await executeListContacts(client, args)),
@@ -1674,12 +1778,15 @@ export function createRecruitCrmServer(dependencies: ServerDependencies = {}): M
   server.registerTool(
     "list_users",
     {
+      title: "List Users",
       description:
         "List Recruit CRM users and return compact user summaries with id, first_name, last_name, and status. Enable include_teams only when the user asks for team membership. Enable include_contact_info only when the user explicitly needs email or phone.",
       inputSchema: listUsersInputSchema,
       outputSchema: listUsersOutputSchema,
       annotations: {
         readOnlyHint: true,
+        destructiveHint: false,
+        openWorldHint: false,
       },
     },
     async (args) => formatResult(await executeListUsers(client, args)),
@@ -1688,12 +1795,15 @@ export function createRecruitCrmServer(dependencies: ServerDependencies = {}): M
   server.registerTool(
     "search_hotlists",
     {
+      title: "Search Hotlists",
       description:
         `Search Recruit CRM hotlists by related_to_type and optional name/shared filters. related_to_type is required. ${unsupportedOwnerFilterGuidance} Broad searches return compact hotlist summaries with related_count only. When name is provided, results also include related_slugs for follow-up workflows.`,
       inputSchema: searchHotlistsInputSchema,
       outputSchema: searchHotlistsOutputSchema,
       annotations: {
         readOnlyHint: true,
+        destructiveHint: false,
+        openWorldHint: false,
       },
     },
     async (args) => formatResult(await executeSearchHotlists(client, args)),
@@ -1702,6 +1812,7 @@ export function createRecruitCrmServer(dependencies: ServerDependencies = {}): M
   server.registerTool(
     "create_hotlist",
     {
+      title: "Create Hotlist",
       description:
         "Create one Recruit CRM hotlist. This tool modifies data in Recruit CRM and should only be used when the user explicitly asks to create a hotlist. Requires created_by as a Recruit CRM user id; use list_users only when a user name must be resolved to an id. Use shared: 0 unless the user explicitly asks to share the hotlist with the team.",
       inputSchema: createHotlistInputSchema,
@@ -1719,6 +1830,7 @@ export function createRecruitCrmServer(dependencies: ServerDependencies = {}): M
   server.registerTool(
     "add_records_to_hotlist",
     {
+      title: "Add Records to Hotlist",
       description:
         "Add up to 10 Recruit CRM record slugs to an existing hotlist. This tool modifies data in Recruit CRM and should only be used when the user explicitly asks to add records to a specific hotlist. Executes sequentially, ignores duplicate input slugs, and returns partial success details instead of failing the whole batch.",
       inputSchema: addRecordsToHotlistInputSchema,
@@ -1736,12 +1848,15 @@ export function createRecruitCrmServer(dependencies: ServerDependencies = {}): M
   server.registerTool(
     "search_tasks",
     {
+      title: "Search Tasks",
       description:
         `Search Recruit CRM tasks and return compact summaries designed for large result sets. ${myRecordsOwnerFilterGuidance} Returns related_to and related_to_type values that can be used to open related entities in Recruit CRM app URLs like https://app.recruitcrm.io/{related_to_type}/{related_to}.`,
       inputSchema: searchTasksInputSchema,
       outputSchema: searchTasksOutputSchema,
       annotations: {
         readOnlyHint: true,
+        destructiveHint: false,
+        openWorldHint: false,
       },
     },
     async (args) => formatResult(await executeSearchTasks(client, args)),
@@ -1750,12 +1865,15 @@ export function createRecruitCrmServer(dependencies: ServerDependencies = {}): M
   server.registerTool(
     "list_task_types",
     {
+      title: "List Task Types",
       description:
         "List Recruit CRM task types and return compact id/label rows. Use this before create_task to resolve a requested task type label to task_type_id; if no type is requested, choose the most relevant available type before creating.",
       inputSchema: {},
       outputSchema: listTaskTypesOutputSchema,
       annotations: {
         readOnlyHint: true,
+        destructiveHint: false,
+        openWorldHint: false,
       },
     },
     async () => formatResult(await executeListTaskTypes(client)),
@@ -1764,6 +1882,7 @@ export function createRecruitCrmServer(dependencies: ServerDependencies = {}): M
   server.registerTool(
     "create_task",
     {
+      title: "Create Task",
       description:
         "Create one Recruit CRM task. This tool modifies data in Recruit CRM and should only be used when explicitly requested. Use list_task_types first to resolve task_type_id; if the user requested a specific type, create only when that type exists. Requires owner_id for the assigned user and created_by for the creating user; use list_users to resolve known names or emails, otherwise ask. Requires description and supports basic HTML/rich text. Returns compact output without the related entity payload.",
       inputSchema: createTaskInputSchema,
@@ -1781,12 +1900,15 @@ export function createRecruitCrmServer(dependencies: ServerDependencies = {}): M
   server.registerTool(
     "search_meetings",
     {
+      title: "Search Meetings",
       description:
         `Search Recruit CRM meetings and return compact summaries designed for large result sets. ${myRecordsOwnerFilterGuidance} Returns related_to and related_to_type values that can be used to open related entities in Recruit CRM app URLs like https://app.recruitcrm.io/{related_to_type}/{related_to}.`,
       inputSchema: searchMeetingsInputSchema,
       outputSchema: searchMeetingsOutputSchema,
       annotations: {
         readOnlyHint: true,
+        destructiveHint: false,
+        openWorldHint: false,
       },
     },
     async (args) => formatResult(await executeSearchMeetings(client, args)),
@@ -1795,12 +1917,15 @@ export function createRecruitCrmServer(dependencies: ServerDependencies = {}): M
   server.registerTool(
     "list_meeting_types",
     {
+      title: "List Meeting Types",
       description:
         "List Recruit CRM meeting types and return compact id/label rows. Use this before create_meeting to resolve a requested meeting type label to meeting_type_id; if no type is requested, choose the most relevant available type before creating.",
       inputSchema: {},
       outputSchema: listMeetingTypesOutputSchema,
       annotations: {
         readOnlyHint: true,
+        destructiveHint: false,
+        openWorldHint: false,
       },
     },
     async () => formatResult(await executeListMeetingTypes(client)),
@@ -1809,15 +1934,16 @@ export function createRecruitCrmServer(dependencies: ServerDependencies = {}): M
   server.registerTool(
     "create_meeting",
     {
+      title: "Create Meeting",
       description:
         "Create one Recruit CRM meeting. This tool modifies data in Recruit CRM and should only be used when explicitly requested. Requires title, reminder, start_date, end_date, owner_id, and created_by. Use list_meeting_types first to resolve meeting_type_id if a type is needed. Use list_users to resolve owner_id and created_by from known names or emails; ask if unknown. Calendar invites are NOT sent by default — only set do_not_send_calendar_invites to false when the user explicitly requests sending invites. Returns compact output without the related entity payload.",
       inputSchema: createMeetingInputSchema,
       outputSchema: createMeetingOutputSchema,
       annotations: {
         readOnlyHint: false,
-        destructiveHint: false,
+        destructiveHint: true,
         idempotentHint: false,
-        openWorldHint: false,
+        openWorldHint: true,
       },
     },
     async (args) => formatResult(await executeCreateMeeting(client, args)),
@@ -1826,12 +1952,15 @@ export function createRecruitCrmServer(dependencies: ServerDependencies = {}): M
   server.registerTool(
     "search_notes",
     {
+      title: "Search Notes",
       description:
         `Search Recruit CRM notes and return compact summaries designed for large result sets. ${unsupportedOwnerFilterGuidance} Returns related_to and related_to_type values that can be used to open related entities in Recruit CRM app URLs like https://app.recruitcrm.io/{related_to_type}/{related_to}.`,
       inputSchema: searchNotesInputSchema,
       outputSchema: searchNotesOutputSchema,
       annotations: {
         readOnlyHint: true,
+        destructiveHint: false,
+        openWorldHint: false,
       },
     },
     async (args) => formatResult(await executeSearchNotes(client, args)),
@@ -1840,12 +1969,15 @@ export function createRecruitCrmServer(dependencies: ServerDependencies = {}): M
   server.registerTool(
     "list_note_types",
     {
+      title: "List Note Types",
       description:
         "List Recruit CRM note types and return compact id/label rows. Use this before create_note to resolve a requested note type label to note_type_id; if no type is requested, choose the most relevant available type before creating.",
       inputSchema: {},
       outputSchema: listNoteTypesOutputSchema,
       annotations: {
         readOnlyHint: true,
+        destructiveHint: false,
+        openWorldHint: false,
       },
     },
     async () => formatResult(await executeListNoteTypes(client)),
@@ -1854,6 +1986,7 @@ export function createRecruitCrmServer(dependencies: ServerDependencies = {}): M
   server.registerTool(
     "create_note",
     {
+      title: "Create Note",
       description:
         "Create one Recruit CRM note. This tool modifies data in Recruit CRM and should only be used when explicitly requested. Use list_note_types first to resolve note_type_id; if the user requested a specific type, create only when that type exists. Requires created_by as a Recruit CRM user id; use list_users to resolve a known user name or email, otherwise ask. Supports basic HTML/rich text in description and returns compact output without the related entity payload.",
       inputSchema: createNoteInputSchema,
@@ -1871,12 +2004,15 @@ export function createRecruitCrmServer(dependencies: ServerDependencies = {}): M
   server.registerTool(
     "search_call_logs",
     {
+      title: "Search Call Logs",
       description:
         `Search Recruit CRM call logs and return compact summaries designed for large result sets. ${unsupportedOwnerFilterGuidance} Returns related_to and related_to_type values that can be used to open related entities in Recruit CRM app URLs like https://app.recruitcrm.io/{related_to_type}/{related_to}.`,
       inputSchema: searchCallLogsInputSchema,
       outputSchema: searchCallLogsOutputSchema,
       annotations: {
         readOnlyHint: true,
+        destructiveHint: false,
+        openWorldHint: false,
       },
     },
     async (args) => formatResult(await executeSearchCallLogs(client, args)),
@@ -1885,12 +2021,15 @@ export function createRecruitCrmServer(dependencies: ServerDependencies = {}): M
   server.registerTool(
     "get_candidate_details",
     {
+      title: "Get Candidate Details",
       description:
         "Fetch full details for up to 10 candidates in parallel by slug. Use this when the user asks for details on a specific set of candidates (e.g. after they pick a shortlist from search_candidates). If ownership matters, first use owner-scoped search_candidates. Do NOT use for bulk scans of the whole database — use search_candidates or list_candidates for that. Returns partial results: one bad slug will not fail the batch, failures are reported in the errors array with status_code.",
       inputSchema: getCandidateDetailsInputSchema,
       outputSchema: candidateDetailsOutputSchema,
       annotations: {
         readOnlyHint: true,
+        destructiveHint: false,
+        openWorldHint: false,
       },
     },
     async (args) => formatResult(await executeGetCandidateDetails(client, args)),
@@ -1899,6 +2038,7 @@ export function createRecruitCrmServer(dependencies: ServerDependencies = {}): M
   server.registerTool(
     "get_job_details",
     {
+      title: "Get Job Details",
       description:
         "Fetch one Recruit CRM job by slug and return the raw Recruit CRM payload. If ownership matters, first use owner-scoped search_jobs. The raw payload may include resource_url and application_form_url for opening the job directly in Recruit CRM.",
       inputSchema: {
@@ -1907,6 +2047,8 @@ export function createRecruitCrmServer(dependencies: ServerDependencies = {}): M
       outputSchema: jobDetailOutputSchema,
       annotations: {
         readOnlyHint: true,
+        destructiveHint: false,
+        openWorldHint: false,
       },
     },
     async ({ job_slug }) => formatResult(await executeGetJobDetails(client, job_slug)),
@@ -1915,12 +2057,15 @@ export function createRecruitCrmServer(dependencies: ServerDependencies = {}): M
   server.registerTool(
     "get_company_details",
     {
+      title: "Get Company Details",
       description:
         "Fetch full details for up to 10 companies in parallel by slug. Use this when the user asks for details on a specific set of companies (e.g. after they pick results from search_companies). If ownership matters, first use owner-scoped search_companies. Do NOT use for bulk scans of the whole database — use search_companies or list_companies for that. Returns partial results: one bad slug will not fail the batch, failures are reported in the errors array with status_code.",
       inputSchema: getCompanyDetailsInputSchema,
       outputSchema: companyDetailsOutputSchema,
       annotations: {
         readOnlyHint: true,
+        destructiveHint: false,
+        openWorldHint: false,
       },
     },
     async (args) => formatResult(await executeGetCompanyDetails(client, args)),
@@ -1929,12 +2074,15 @@ export function createRecruitCrmServer(dependencies: ServerDependencies = {}): M
   server.registerTool(
     "get_contact_details",
     {
+      title: "Get Contact Details",
       description:
         "Fetch full details for up to 10 contacts in parallel by slug. Use this when the user asks for details on a specific set of contacts (e.g. after they pick results from search_contacts). If ownership matters, first use owner-scoped search_contacts. Do NOT use for full-database scans — use search_contacts or list_contacts for that. Returns partial results: one bad slug will not fail the batch, failures are reported in the errors array with status_code.",
       inputSchema: getContactDetailsInputSchema,
       outputSchema: contactDetailsOutputSchema,
       annotations: {
         readOnlyHint: true,
+        destructiveHint: false,
+        openWorldHint: false,
       },
     },
     async (args) => formatResult(await executeGetContactDetails(client, args)),
@@ -1943,12 +2091,15 @@ export function createRecruitCrmServer(dependencies: ServerDependencies = {}): M
   server.registerTool(
     "get_job_assigned_candidates",
     {
+      title: "Get Job Assigned Candidates",
       description:
-        "Fetch assigned candidates for one Recruit CRM job and return compact assignment summaries. If the user says 'my job', first resolve the job through owner-scoped search_jobs. Use list_candidate_hiring_stages to resolve labels like Placed to stage ids for the status_id filter. Returns candidate_slug values that can be used to open Recruit CRM candidate URLs like https://app.recruitcrm.io/candidate/{candidate_slug}.",
+        "Fetch assigned candidates for one Recruit CRM job and return compact assignment summaries. If the user says 'my job', first resolve the job through owner-scoped search_jobs. For stage-label filters such as Placed, resolve status_id with list_candidate_hiring_stages first: use the job's hiring_pipeline_id from search_jobs/list_jobs for job-specific stages, or hiring_pipeline_id 0 when only a global hiring stage ID is needed and no job context is required. Returns candidate_slug values that can be used to open Recruit CRM candidate URLs like https://app.recruitcrm.io/candidate/{candidate_slug}.",
       inputSchema: getJobAssignedCandidatesInputSchema,
       outputSchema: getJobAssignedCandidatesOutputSchema,
       annotations: {
         readOnlyHint: true,
+        destructiveHint: false,
+        openWorldHint: false,
       },
     },
     async ({ job_slug, page, limit, status_id }) =>
@@ -1958,26 +2109,68 @@ export function createRecruitCrmServer(dependencies: ServerDependencies = {}): M
   server.registerTool(
     "list_candidate_hiring_stages",
     {
+      title: "List Candidate Hiring Stages",
       description:
-        "List Recruit CRM candidate hiring stages and return compact stage rows for resolving labels to stage ids used by get_job_assigned_candidates.status_id.",
-      inputSchema: {},
+        "List Recruit CRM candidate hiring stages for a hiring pipeline and return compact stage rows for resolving labels to stage ids. Pass hiring_pipeline_id 0 (default) for the Master Hiring Pipeline when only a hiring stage ID is needed and there is no job dependency. For job-specific stages, use the hiring_pipeline_id returned by search_jobs or list_jobs. Use this before get_job_assigned_candidates.status_id and update_candidate_hiring_stage.status_id.",
+      inputSchema: listCandidateHiringStagesInputSchema,
       outputSchema: listCandidateHiringStagesOutputSchema,
       annotations: {
         readOnlyHint: true,
+        destructiveHint: false,
+        openWorldHint: false,
       },
     },
-    async () => formatResult(await executeListCandidateHiringStages(client)),
+    async (args) => formatResult(await executeListCandidateHiringStages(client, args)),
+  );
+
+  server.registerTool(
+    "assign_candidate_to_job",
+    {
+      title: "Assign Candidate To Job",
+      description:
+        "Assign one Recruit CRM candidate to one job at the default Assigned hiring stage. Requires candidate_slug, job_slug, and updated_by. This endpoint does not support remarks, explicit stage selection, stage_date, or create_placement; use update_candidate_hiring_stage afterward when a non-default stage or remark is needed. This tool modifies Recruit CRM data and should only be used when explicitly requested.",
+      inputSchema: assignCandidateToJobInputSchema,
+      outputSchema: assignCandidateToJobOutputSchema,
+      annotations: {
+        readOnlyHint: false,
+        destructiveHint: false,
+        idempotentHint: false,
+        openWorldHint: false,
+      },
+    },
+    async (args) => formatResult(await executeAssignCandidateToJob(client, args)),
+  );
+
+  server.registerTool(
+    "update_candidate_hiring_stage",
+    {
+      title: "Update Candidate Hiring Stage",
+      description:
+        "Update one candidate's hiring stage for a specific Recruit CRM job. Requires candidate_slug, job_slug, status_id, stage_date, and updated_by. Resolve status_id with list_candidate_hiring_stages first: pass hiring_pipeline_id 0 when only a master hiring stage ID is needed, or use the job's hiring_pipeline_id from search_jobs/list_jobs for job-specific pipeline stages. create_placement defaults to false; set true only when the user explicitly asks to create a placement. remark supports basic HTML/rich text. This tool modifies Recruit CRM data and should only be used when explicitly requested.",
+      inputSchema: updateCandidateHiringStageInputSchema,
+      outputSchema: updateCandidateHiringStageOutputSchema,
+      annotations: {
+        readOnlyHint: false,
+        destructiveHint: false,
+        idempotentHint: false,
+        openWorldHint: false,
+      },
+    },
+    async (args) => formatResult(await executeUpdateCandidateHiringStage(client, args)),
   );
 
   server.registerTool(
     "list_job_statuses",
     {
+      title: "List Job Statuses",
       description:
         "List Recruit CRM job pipeline statuses (e.g. Open, Closed, On Hold, plus any custom statuses configured for the account). Returns compact rows with id and label so the LLM can resolve a status name (including custom labels) to the numeric job_status_id used by search_jobs.job_status. Use this whenever the user references a job status by name and the upstream filter needs the id.",
       inputSchema: {},
       outputSchema: listJobStatusesOutputSchema,
       annotations: {
         readOnlyHint: true,
+        destructiveHint: false,
+        openWorldHint: false,
       },
     },
     async () => formatResult(await executeListJobStatuses(client)),
@@ -1986,6 +2179,7 @@ export function createRecruitCrmServer(dependencies: ServerDependencies = {}): M
   server.registerTool(
     "get_candidate_job_assignment_hiring_stage_history",
     {
+      title: "Get Candidate Hiring Stage History",
       description:
         "Fetch one candidate's job assignment hiring stage history by candidate slug. Returns compact entries with job, company, stage, remark, and update metadata.",
       inputSchema: {
@@ -1994,6 +2188,8 @@ export function createRecruitCrmServer(dependencies: ServerDependencies = {}): M
       outputSchema: candidateJobAssignmentHiringStageHistoryOutputSchema,
       annotations: {
         readOnlyHint: true,
+        destructiveHint: false,
+        openWorldHint: false,
       },
     },
     async ({ candidate_slug }) =>
@@ -2003,6 +2199,7 @@ export function createRecruitCrmServer(dependencies: ServerDependencies = {}): M
   server.registerTool(
     "list_candidate_custom_fields",
     {
+      title: "List Candidate Custom Fields",
       description: "List curated candidate custom field metadata for search. Returns searchable fields by default.",
       inputSchema: {
         include_non_searchable: booleanLikeSchema
@@ -2012,6 +2209,8 @@ export function createRecruitCrmServer(dependencies: ServerDependencies = {}): M
       outputSchema: listCandidateCustomFieldsOutputSchema,
       annotations: {
         readOnlyHint: true,
+        destructiveHint: false,
+        openWorldHint: false,
       },
     },
     async ({ include_non_searchable }) =>
@@ -2021,6 +2220,7 @@ export function createRecruitCrmServer(dependencies: ServerDependencies = {}): M
   server.registerTool(
     "get_candidate_custom_field_details",
     {
+      title: "Get Candidate Custom Field Details",
       description: "Fetch curated candidate custom field details by field_id, including dropdown or multiselect options.",
       inputSchema: {
         field_id: z.coerce.number().int().positive().describe("Candidate custom field id."),
@@ -2028,6 +2228,8 @@ export function createRecruitCrmServer(dependencies: ServerDependencies = {}): M
       outputSchema: candidateCustomFieldDetailOutputSchema,
       annotations: {
         readOnlyHint: true,
+        destructiveHint: false,
+        openWorldHint: false,
       },
     },
     async ({ field_id }) => formatResult(await executeGetCandidateCustomFieldDetails(client, field_id)),
@@ -2036,6 +2238,7 @@ export function createRecruitCrmServer(dependencies: ServerDependencies = {}): M
   server.registerTool(
     "get_custom_field_dependencies",
     {
+      title: "Get Custom Field Dependencies",
       description:
         "Get parent-child dependency relationships for custom fields of a given entity type " +
         "(candidates, contacts, companies, jobs, deals). " +
@@ -2055,8 +2258,11 @@ export function createRecruitCrmServer(dependencies: ServerDependencies = {}): M
             "Optional: narrow results to the dependency subtree for a specific field ID (parent or child). Omit to fetch all dependencies for the entity type.",
           ),
       },
+      outputSchema: getCustomFieldDependenciesOutputSchema,
       annotations: {
         readOnlyHint: true,
+        destructiveHint: false,
+        openWorldHint: false,
       },
     },
     async ({ entity_type, field_id }) =>
@@ -2066,12 +2272,15 @@ export function createRecruitCrmServer(dependencies: ServerDependencies = {}): M
   server.registerTool(
     "analyze_job_pipeline",
     {
+      title: "Analyze Job Pipeline",
       description:
         "Diagnose a single Recruit CRM job's hiring pipeline in one call: stage-by-stage candidate distribution, days_in_current_stage per active candidate (sourced from assignment-level stage_date by default — cheap, ~7 API hits), idle / at-risk candidates, bottleneck stage verdict, recent notes / meetings / tasks tied to the job, and suggested next actions. Use this for prompts like \"how's job X doing\", \"is this role stuck\", \"review my pipeline for X\", \"any bottlenecks\", \"who's been sitting too long\", \"what should I do next on this job\". For prompts that ask about time-to-hire, time-to-offer, time-to-interview, time-to-first-action, or any \"how long does it take to …\" question, set include_time_metrics=true — this fetches per-candidate /history for capped active + Placed candidates and populates the time_metrics block. Default include_time_metrics=false keeps the call cheap; only flip it on when time-based metrics are explicitly requested. Requires the job slug — if the user only gave a job name or title, FIRST call search_jobs to resolve the slug, then call this; never ask the user for a slug. If the user implies self-ownership (\"my jobs\", \"my pipeline\"), resolve their user_id via list_users first, then filter search_jobs by owner_id. Candidate slugs in the response can be hyperlinked as https://app.recruitcrm.io/candidate/{candidate_slug}. Call logs are not included because the Recruit CRM API does not support filtering call logs by job.",
       inputSchema: analyzeJobPipelineInputSchema,
       outputSchema: analyzeJobPipelineOutputSchema,
       annotations: {
         readOnlyHint: true,
+        destructiveHint: false,
+        openWorldHint: false,
       },
     },
     async (args) =>
@@ -2275,7 +2484,7 @@ export async function executeListUsers(client: RecruitCrmClient, args: ListUsers
 }
 
 export async function executeSearchJobs(client: RecruitCrmClient, args: SearchJobsInput): Promise<SearchJobsResult> {
-  const result = await client.searchJobs({
+  const filters: SearchJobsInput = {
     page: args.page ?? 1,
     city: args.city,
     company_name: args.company_name,
@@ -2310,9 +2519,92 @@ export async function executeSearchJobs(client: RecruitCrmClient, args: SearchJo
     sort_order: args.sort_order ?? "desc",
     updated_from: args.updated_from,
     updated_to: args.updated_to,
-  });
+  };
+
+  const result =
+    filters.job_status === undefined
+      ? await client.searchJobs(filters)
+      : await searchJobsWithLocalStatusFilter(client, filters, filters.job_status);
 
   return mapSearchJobsResult(result);
+}
+
+async function searchJobsWithLocalStatusFilter(
+  client: RecruitCrmClient,
+  filters: SearchJobsInput,
+  jobStatus: number,
+): Promise<RecruitCrmJobSearchResponse> {
+  const requestedPage = filters.page ?? 1;
+  const requestedLimit = filters.limit ?? 100;
+  const requiredMatches = requestedPage * requestedLimit + 1;
+  const matches: RecruitCrmJob[] = [];
+  const useSearchEndpoint = hasSearchJobFiltersForApi(filters);
+  let sourcePage = 1;
+
+  while (matches.length < requiredMatches) {
+    const page = useSearchEndpoint
+      ? await client.searchJobs(buildStatuslessSearchJobFilters(filters, sourcePage))
+      : await client.listJobs({
+          page: sourcePage,
+          limit: 100,
+          sort_by: filters.sort_by,
+          sort_order: filters.sort_order,
+        });
+
+    matches.push(...page.data.filter((job) => getJobStatusId(job) === jobStatus));
+
+    const hasMore = typeof page.next_page_url === "string" && page.next_page_url.length > 0;
+    if (!hasMore) {
+      break;
+    }
+
+    sourcePage += 1;
+  }
+
+  const start = (requestedPage - 1) * requestedLimit;
+  const end = start + requestedLimit;
+  const hasMoreFilteredMatches = matches.length > end;
+
+  return {
+    current_page: requestedPage,
+    next_page_url: hasMoreFilteredMatches ? `local://search_jobs/job_status/${jobStatus}?page=${requestedPage + 1}` : null,
+    data: matches.slice(start, end),
+  };
+}
+
+function getJobStatusId(job: RecruitCrmJob): number | null {
+  const rawId = job.job_status?.id;
+  if (rawId === undefined || rawId === null || rawId === "") {
+    return null;
+  }
+
+  const id = Number(rawId);
+  return Number.isFinite(id) ? id : null;
+}
+
+function hasSearchJobFiltersForApi(filters: SearchJobsInput): boolean {
+  const ignoredKeys: Array<keyof SearchJobsInput> = [
+    "page",
+    "limit",
+    "sort_by",
+    "sort_order",
+    "exact_search",
+    "job_status",
+  ];
+  const ignored = new Set<keyof SearchJobsInput>(ignoredKeys);
+
+  return (Object.keys(filters) as Array<keyof SearchJobsInput>).some(
+    (key) => !ignored.has(key) && filters[key] !== undefined,
+  );
+}
+
+function buildStatuslessSearchJobFilters(filters: SearchJobsInput, sourcePage: number): SearchJobsInput {
+  return {
+    ...filters,
+    job_status: undefined,
+    page: sourcePage,
+    limit: 100,
+  };
 }
 
 export async function executeSearchCompanies(
@@ -2701,10 +2993,43 @@ export async function executeGetJobAssignedCandidates(
 
 export async function executeListCandidateHiringStages(
   client: RecruitCrmClient,
+  args: ListCandidateHiringStagesInput = {},
 ): Promise<CandidateHiringStagesResult> {
-  const result = await client.listCandidateHiringStages();
+  const result = await client.listCandidateHiringStages({
+    hiring_pipeline_id: args.hiring_pipeline_id ?? 0,
+  });
 
   return mapCandidateHiringStagesResult(result);
+}
+
+export async function executeAssignCandidateToJob(
+  client: RecruitCrmClient,
+  args: AssignCandidateToJobInput,
+): Promise<AssignCandidateToJobResult> {
+  const result = await client.assignCandidateToJob({
+    candidate_slug: args.candidate_slug,
+    job_slug: args.job_slug,
+    updated_by: args.updated_by,
+  });
+
+  return mapAssignCandidateToJobResult(result);
+}
+
+export async function executeUpdateCandidateHiringStage(
+  client: RecruitCrmClient,
+  args: UpdateCandidateHiringStageInput,
+): Promise<UpdateCandidateHiringStageResult> {
+  const result = await client.updateCandidateHiringStage({
+    candidate_slug: args.candidate_slug,
+    job_slug: args.job_slug,
+    status_id: args.status_id,
+    remark: args.remark,
+    stage_date: args.stage_date,
+    updated_by: args.updated_by,
+    create_placement: args.create_placement ?? false,
+  });
+
+  return mapUpdateCandidateHiringStageResult(result);
 }
 
 export async function executeListJobStatuses(
@@ -3075,6 +3400,8 @@ function formatResult(
     | CandidateJobAssignmentHiringStageHistoryResult
     | CandidateCustomFieldListResult
     | CandidateCustomFieldDetail
+    | AssignCandidateToJobResult
+    | UpdateCandidateHiringStageResult
     | AnalyzeJobPipelineResult,
 ) {
   return {
@@ -3277,6 +3604,7 @@ function buildAnalyzeJobHeader(
     owner: toAnalyzeFiniteNumber(job.owner),
     owner_name: ownerName,
     company_slug: typeof job.company_slug === "string" ? job.company_slug : null,
+    hiring_pipeline_id: toAnalyzeFiniteNumber(job.hiring_pipeline_id),
     created_on: createdOn,
     days_open: createdOn ? analyzeDaysBetween(createdOn) : null,
     number_of_openings: toAnalyzeFiniteNumber(job.number_of_openings),

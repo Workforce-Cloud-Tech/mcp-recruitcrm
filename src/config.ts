@@ -11,7 +11,20 @@ const envBooleanSchema = z
 
 const envSchema = z.object({
   RECRUITCRM_API_TOKEN: z.string().trim().min(1, "RECRUITCRM_API_TOKEN is required."),
-  RECRUITCRM_BASE_URL: z.string().trim().url().optional(),
+  RECRUITCRM_BASE_URL: z
+    .string()
+    .trim()
+    .url()
+    .refine(
+      (url) => {
+        const { protocol, hostname } = new URL(url);
+        const isHttps = protocol === "https:";
+        const isLocalhost = protocol === "http:" && (hostname === "localhost" || hostname === "127.0.0.1");
+        return isHttps || isLocalhost;
+      },
+      "RECRUITCRM_BASE_URL must use HTTPS (http: is only permitted for localhost/127.0.0.1).",
+    )
+    .optional(),
   RECRUITCRM_TIMEOUT_MS: z
     .string()
     .trim()

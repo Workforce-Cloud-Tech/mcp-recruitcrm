@@ -39,4 +39,27 @@ describe("error mapping", () => {
     expect(mapFetchError(timeout).message).toBe("Recruit CRM API request timed out.");
     expect(mapFetchError(new Error("socket hang up")).message).toBe("Unable to reach the Recruit CRM API.");
   });
+
+  it("extracts errorMessage field, root-level array errors, and detects invalid updater 404s", () => {
+    // errorMessage field extraction
+    expect(
+      mapHttpError(422, JSON.stringify({ errorMessage: "Candidate is already assigned to this job" })).message,
+    ).toMatch(/Candidate is already assigned to this job/);
+
+    // Root-level field array extraction (e.g. { job_slug: ["Invalid job slug"] })
+    expect(
+      mapHttpError(422, JSON.stringify({ job_slug: ["Invalid job slug"] })).message,
+    ).toMatch(/job_slug: Invalid job slug/);
+
+    // Invalid updater 404 → "Invalid updater" not "not found"
+    expect(
+      mapHttpError(404, JSON.stringify({ errorMessage: "Updated By Id is not valid" }), "Candidate").message,
+    ).toMatch(/Invalid updater/);
+    expect(
+      mapHttpError(404, JSON.stringify({ errorMessage: "Updated By Id is not valid" }), "Candidate").message,
+    ).not.toMatch(/not found/i);
+
+    // Regular 404 with entity still produces "X not found" (regression guard)
+    expect(mapHttpError(404, undefined, "Candidate").message).toBe("Candidate not found.");
+  });
 });

@@ -35,6 +35,9 @@ export function mapHttpError(statusCode: number, bodyText?: string, entity?: str
 
   if (statusCode === 404) {
     const detail = apiMessage ? ` Details: ${apiMessage}` : "";
+    if (isInvalidUpdaterMessage(apiMessage)) {
+      return new RecruitCrmApiError(`Invalid updater.${detail}`, statusCode);
+    }
     return new RecruitCrmApiError(`${entityLabel} not found.${detail}`, statusCode);
   }
 
@@ -113,6 +116,7 @@ function extractApiMessage(bodyText: string | undefined): string | undefined {
       const obj = parsed as Record<string, unknown>;
       const message =
         (typeof obj.message === "string" && obj.message) ||
+        (typeof obj.errorMessage === "string" && obj.errorMessage) ||
         (typeof obj.error === "string" && obj.error) ||
         (typeof obj.detail === "string" && obj.detail) ||
         undefined;
@@ -122,22 +126,15 @@ function extractApiMessage(bodyText: string | undefined): string | undefined {
       }
 
       if (obj.errors && typeof obj.errors === "object") {
-        const errorsObj = obj.errors as Record<string, unknown>;
-        const parts = Object.entries(errorsObj)
-          .map(([field, value]) => {
-            if (Array.isArray(value)) {
-              return `${field}: ${value.join(", ")}`;
-            }
-            if (typeof value === "string") {
-              return `${field}: ${value}`;
-            }
-            return `${field}: ${JSON.stringify(value)}`;
-          })
-          .join("; ");
-
+        const parts = formatApiFieldErrors(obj.errors as Record<string, unknown>);
         if (parts) {
           return truncate(parts);
         }
+      }
+
+      const rootFieldErrors = formatApiFieldErrors(obj, { arraysOnly: true });
+      if (rootFieldErrors) {
+        return truncate(rootFieldErrors);
       }
 
       return truncate(JSON.stringify(obj));
@@ -147,6 +144,42 @@ function extractApiMessage(bodyText: string | undefined): string | undefined {
   }
 
   return truncate(trimmed);
+}
+
+function isInvalidUpdaterMessage(message: string | undefined): boolean {
+  if (!message) {
+    return false;
+  }
+  return /updated[\s_-]*by/i.test(message) && /\b(invalid|not valid|not found|doesn'?t exist)\b/i.test(message);
+}
+
+function formatApiFieldErrors(
+  errorsObj: Record<string, unknown>,
+  options: { arraysOnly?: boolean } = {},
+): string {
+  return Object.entries(errorsObj)
+    .filter(([field]) => field !== "errors")
+    .map(([field, value]) => {
+      if (Array.isArray(value)) {
+        return `${field}: ${value.map(formatApiFieldErrorValue).join(", ")}`;
+      }
+      if (!options.arraysOnly && typeof value === "string") {
+        return `${field}: ${value}`;
+      }
+      if (!options.arraysOnly && value && typeof value === "object") {
+        return `${field}: ${JSON.stringify(value)}`;
+      }
+      return undefined;
+    })
+    .filter((part): part is string => Boolean(part))
+    .join("; ");
+}
+
+function formatApiFieldErrorValue(value: unknown): string {
+  if (typeof value === "string") {
+    return value;
+  }
+  return JSON.stringify(value) ?? String(value);
 }
 
 function truncate(value: string, max = 500): string {
