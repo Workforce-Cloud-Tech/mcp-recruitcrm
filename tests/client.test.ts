@@ -1,11 +1,20 @@
 import { describe, expect, it } from "vitest";
 
 import {
-  buildAssignCandidateToJobRequest,
+  buildCreateJobRequest,
+  buildCreateCompanyRequest,
   buildCreateNoteRequest,
   buildCreateTaskRequest,
+  buildUpdateJobRequest,
+  buildUpdateCompanyRequest,
   buildListContactsRequest,
   buildListUsersRequest,
+  buildMarkCandidateOffLimitRequest,
+  buildMarkCandidateAvailableRequest,
+  buildMarkCompanyOffLimitRequest,
+  buildMarkCompanyAvailableRequest,
+  buildMarkContactOffLimitRequest,
+  buildMarkContactAvailableRequest,
   buildGetJobAssignedCandidatesRequest,
   buildSearchCandidatesRequest,
   buildSearchCallLogsRequest,
@@ -16,7 +25,6 @@ import {
   buildSearchMeetingsRequest,
   buildSearchNotesRequest,
   buildSearchTasksRequest,
-  buildUpdateCandidateHiringStageRequest,
 } from "../src/recruitcrm/client.js";
 
 describe("buildSearchCandidatesRequest", () => {
@@ -296,52 +304,67 @@ describe("buildSearchJobsRequest", () => {
     expect(request.query?.get("sort_order")).toBeNull();
     expect(request.jsonBody).toBeUndefined();
   });
-
-  it("serializes job_status 0 as the string '0'", () => {
-    const request = buildSearchJobsRequest({
-      job_status: 0,
-    });
-
-    expect(request.query?.get("job_status")).toBe("0");
-  });
 });
 
-describe("buildUpdateCandidateHiringStageRequest", () => {
-  it("builds a POST JSON body with all required fields", () => {
-    const request = buildUpdateCandidateHiringStageRequest({
-      candidate_slug: "candidate-sample-001",
-      job_slug: "job-sample-001",
-      status_id: 7006,
-      remark: "Rescheduled.",
-      stage_date: "2026-05-19T10:00:00Z",
-      updated_by: 42,
-      create_placement: false,
+describe("buildCreateJobRequest", () => {
+  it("builds a JSON POST body and serializes comma-separated fields", () => {
+    const request = buildCreateJobRequest({
+      name: "Create Operations Analyst",
+      company_slug: "company-sample-001",
+      contact_slug: "contact-sample-001",
+      secondary_contact_slugs: ["contact-sample-002", "contact-sample-003"],
+      job_description_text: "<p>Rich description</p>",
+      currency_id: 2,
+      enable_job_application_form: 0,
+      owner_id: 453,
+      created_by: 453,
+      enable_auto_populate_teams: true,
+      collaborator_user_ids: [453, 454],
+      collaborator_team_ids: [16],
+      targetcompanies: ["company-target-001"],
+      xml_feeds: {
+        default: "1,2",
+      },
+      custom_fields: [{ field_id: 12, value: "Enterprise" }],
     });
 
     expect(request.method).toBe("POST");
-    expect(request.query).toBeUndefined();
-    expect(request.jsonBody).toMatchObject({
-      status_id: 7006,
-      remark: "Rescheduled.",
-      stage_date: "2026-05-19T10:00:00Z",
-      updated_by: 42,
-      create_placement: false,
+    expect(request.jsonBody).toEqual({
+      name: "Create Operations Analyst",
+      company_slug: "company-sample-001",
+      contact_slug: "contact-sample-001",
+      job_description_text: "<p>Rich description</p>",
+      currency_id: 2,
+      enable_job_application_form: 0,
+      owner_id: 453,
+      created_by: 453,
+      xml_feeds: {
+        default: "1,2",
+      },
+      secondary_contact_slugs: "contact-sample-002,contact-sample-003",
+      targetcompanies: "company-target-001",
+      collaborator_user_ids: "453,454",
+      collaborator_team_ids: "16",
+      enable_auto_populate_teams: 1,
+      custom_fields: [{ field_id: 12, value: "Enterprise" }],
     });
   });
 });
 
-describe("buildAssignCandidateToJobRequest", () => {
-  it("builds a POST with query params and no JSON body", () => {
-    const request = buildAssignCandidateToJobRequest({
-      candidate_slug: "candidate-sample-001",
-      job_slug: "job-sample-001",
-      updated_by: 42,
+describe("buildUpdateJobRequest", () => {
+  it("builds a JSON POST body and strips job_slug", () => {
+    const request = buildUpdateJobRequest({
+      job_slug: "job-created-sample-001",
+      note_for_candidates: "<p>Updated note</p>",
+      updated_by: 453,
     });
 
     expect(request.method).toBe("POST");
-    expect(request.jsonBody).toBeUndefined();
-    expect(request.query?.get("job_slug")).toBe("job-sample-001");
-    expect(request.query?.get("updated_by")).toBe("42");
+    expect(request.jsonBody).toEqual({
+      note_for_candidates: "<p>Updated note</p>",
+      updated_by: 453,
+    });
+    expect(request.jsonBody).not.toHaveProperty("job_slug");
   });
 });
 
@@ -407,6 +430,48 @@ describe("buildSearchCompaniesRequest", () => {
     expect(request.query?.get("sort_by")).toBeNull();
     expect(request.query?.get("sort_order")).toBeNull();
     expect(request.jsonBody).toBeUndefined();
+  });
+});
+
+describe("buildCreateCompanyRequest", () => {
+  it("builds a POST body and strips helper-only fields", () => {
+    const request = buildCreateCompanyRequest({
+      company_name: "Example Holdings",
+      website: "https://www.example-holdings.test",
+      owner_id: 453,
+      created_by: 453,
+      allow_duplicate: true,
+      custom_fields: [{ field_id: 12, value: "Enterprise" }],
+    });
+
+    expect(request.method).toBe("POST");
+    expect(request.jsonBody).toEqual({
+      company_name: "Example Holdings",
+      website: "https://www.example-holdings.test",
+      owner_id: 453,
+      created_by: 453,
+      custom_fields: [{ field_id: 12, value: "Enterprise" }],
+    });
+    expect(request.jsonBody).not.toHaveProperty("allow_duplicate");
+  });
+});
+
+describe("buildUpdateCompanyRequest", () => {
+  it("builds a POST body and strips company_slug", () => {
+    const request = buildUpdateCompanyRequest({
+      company_slug: "company-sample-001",
+      company_name: "Updated Holdings",
+      updated_by: 453,
+      custom_fields: [{ field_id: 12, value: "Strategic" }],
+    });
+
+    expect(request.method).toBe("POST");
+    expect(request.jsonBody).toEqual({
+      company_name: "Updated Holdings",
+      updated_by: 453,
+      custom_fields: [{ field_id: 12, value: "Strategic" }],
+    });
+    expect(request.jsonBody).not.toHaveProperty("company_slug");
   });
 });
 
@@ -522,6 +587,102 @@ describe("buildListContactsRequest", () => {
     expect(request.query?.get("sort_by")).toBe("updatedon");
     expect(request.query?.get("sort_order")).toBe("desc");
     expect(request.jsonBody).toBeUndefined();
+  });
+});
+
+describe("mark off-limit request builders", () => {
+  it("serializes candidate, contact, and company mark requests as Recruit CRM expects", () => {
+    expect(
+      buildMarkCandidateOffLimitRequest({
+        candidate_slugs: ["candidate-sample-001", "candidate-sample-002"],
+        status_id: 7,
+        end_date: "29-06-2026",
+        reason: "Testing",
+      }),
+    ).toEqual({
+      method: "POST",
+      jsonBody: {
+        candidate_slugs: "candidate-sample-001,candidate-sample-002",
+        status_id: 7,
+        end_date: "29-06-2026",
+        reason: "Testing",
+      },
+    });
+
+    expect(
+      buildMarkContactOffLimitRequest({
+        contact_slugs: ["contact-sample-001"],
+        status_id: 7,
+        end_date: "29-06-2026",
+      }),
+    ).toEqual({
+      method: "POST",
+      jsonBody: {
+        contact_slugs: "contact-sample-001",
+        status_id: 7,
+        end_date: "29-06-2026",
+      },
+    });
+
+    expect(
+      buildMarkCompanyOffLimitRequest({
+        company_slugs: ["company-sample-001"],
+        status_id: 7,
+        end_date: "29-06-2026",
+        mark_contact_off_limit: false,
+        mark_candidate_off_limit: true,
+      }),
+    ).toEqual({
+      method: "POST",
+      jsonBody: {
+        company_slugs: "company-sample-001",
+        status_id: 7,
+        end_date: "29-06-2026",
+        mark_contact_off_limit: false,
+        mark_candidate_off_limit: true,
+      },
+    });
+  });
+});
+
+describe("mark records available request builders", () => {
+  it("serializes candidate, contact, and company availability requests as Recruit CRM expects", () => {
+    expect(
+      buildMarkCandidateAvailableRequest({
+        slugs: ["candidate-sample-001", "candidate-sample-002"],
+      }),
+    ).toEqual({
+      method: "POST",
+      jsonBody: {
+        candidate_slugs: "candidate-sample-001,candidate-sample-002",
+      },
+    });
+
+    expect(
+      buildMarkContactAvailableRequest({
+        slugs: ["contact-sample-001"],
+      }),
+    ).toEqual({
+      method: "POST",
+      jsonBody: {
+        contact_slugs: "contact-sample-001",
+      },
+    });
+
+    expect(
+      buildMarkCompanyAvailableRequest({
+        slugs: ["company-sample-001"],
+        mark_contact_available: false,
+        mark_candidate_available: true,
+      }),
+    ).toEqual({
+      method: "POST",
+      jsonBody: {
+        company_slugs: "company-sample-001",
+        mark_contact_available: false,
+        mark_candidate_available: true,
+      },
+    });
   });
 });
 

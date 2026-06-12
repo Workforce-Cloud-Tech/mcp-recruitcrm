@@ -10,16 +10,34 @@ import {
   mapCompanySummary,
   mapContactSummary,
   mapCreateHotlistResult,
+  mapCreateCallLogResult,
   mapCreateNoteResult,
   mapCreateTaskResult,
   mapHiringStageSummary,
   mapAssignedCandidateSummary,
   mapJobSummary,
   mapJobAssignedCandidatesResult,
+  mapListCallTypesResult,
+  mapListCandidateQuestionsResult,
+  mapListCurrenciesResult,
+  mapListHiringPipelinesResult,
+  mapListLanguagesAndProficienciesResult,
   mapListNoteTypesResult,
+  mapListOffLimitStatusesResult,
+  mapListPitchStagesResult,
+  mapListQualificationsResult,
+  mapListTeamsResult,
   mapListTaskTypesResult,
   mapListUsersResult,
+  mapListXmlJobboardsResult,
+  mapMarkCandidateOffLimitResult,
+  mapMarkCompanyOffLimitResult,
+  mapMarkContactOffLimitResult,
+  mapMarkRecordsAvailableResult,
   mapMeetingSummary,
+  mapPitchCandidateToContactResult,
+  mapPitchHistoryResult,
+  mapPitchedRecordsResult,
   mapSearchMeetingsResult,
   mapSearchNotesResult,
   mapSearchCallLogsResult,
@@ -31,30 +49,52 @@ import {
   mapSearchTasksResult,
   mapNoteSummary,
   mapTaskSummary,
+  mapUpdateCandidatePitchStageResult,
   mapUpdateCandidateHiringStageResult,
   mapUserSummary,
 } from "../src/recruitcrm/mappers.js";
 import {
   sampleCallLogSearchResponse,
+  sampleCallLogTypeListResponse,
   sampleCandidateHiringStageUpdateResponse,
-  sampleCandidateJobAssignmentHiringStageHistoryResponse,
   sampleCandidateJobAssignmentResponse,
+  sampleCandidateJobAssignmentHiringStageHistoryResponse,
+  sampleCandidateQuestionListResponse,
   sampleCompanySearchResponse,
   sampleContactSearchResponse,
+  sampleCurrencyListResponse,
+  sampleCreatedCallLogResponse,
   sampleCreatedHotlistResponse,
   sampleCreatedNoteResponse,
   sampleCreatedTaskResponse,
+  sampleHiringPipelineListResponse,
   sampleHiringPipelineResponse,
   sampleHotlistSearchResponse,
   sampleJobSearchResponse,
   sampleJobAssignedCandidatesResponse,
+  sampleLanguageListResponse,
   sampleMeetingSearchResponse,
+  sampleMarkCandidateAvailableResponse,
+  sampleMarkCandidateOffLimitResponse,
+  sampleMarkCompanyAvailableResponse,
+  sampleMarkCompanyOffLimitResponse,
+  sampleMarkContactAvailableResponse,
+  sampleMarkContactOffLimitResponse,
   sampleNoteSearchResponse,
   sampleNoteTypeListResponse,
+  sampleOffLimitStatusListResponse,
+  samplePitchCandidateResponse,
+  samplePitchHistoryResponse,
+  samplePitchedRecordsResponse,
+  samplePitchPipelineResponse,
+  sampleUpdateCandidatePitchStageResponse,
+  sampleQualificationListResponse,
   sampleSearchResponse,
   sampleTaskSearchResponse,
   sampleTaskTypeListResponse,
+  sampleTeamListResponse,
   sampleUserListResponse,
+  sampleXmlJobboardsResponse,
 } from "./fixtures.js";
 
 describe("candidate mappers", () => {
@@ -156,6 +196,104 @@ describe("candidate hiring stage mappers", () => {
       stage_id: 10,
       label: "Applied",
     });
+  });
+
+  it("maps candidate hiring stage update responses into compact output", () => {
+    expect(mapUpdateCandidateHiringStageResult(sampleCandidateHiringStageUpdateResponse)).toEqual({
+      candidate_slug: "candidate-sample-001",
+      job_slug: "job-sample-001",
+      status_id: 7006,
+      status_label: "Reschedule Interview",
+      remark: "<p>Shortlisted because xyz</p>",
+      stage_date: "2020-03-25T16:14:28.000000Z",
+      visibility: 1,
+      shared_list_url: "https://recruitcrm.io/assigned_candidates/618171762938459",
+      updated_on: "2026-05-13T17:01:46.000000Z",
+      updated_by: 453,
+    });
+  });
+
+  it("maps candidate job assignment responses into compact output", () => {
+    expect(mapAssignCandidateToJobResult(sampleCandidateJobAssignmentResponse)).toEqual({
+      candidate_slug: "candidate-sample-001",
+      job_slug: "job-sample-001",
+      status_id: 1,
+      status_label: "Assigned",
+      remark: null,
+      stage_date: "2026-05-19T08:41:32.000000Z",
+      visibility: 0,
+      shared_list_url: null,
+      updated_on: "2026-05-19T08:41:32.000000Z",
+      updated_by: 453,
+    });
+  });
+});
+
+describe("pitch mappers", () => {
+  it("maps pitch stages and actions into compact output", () => {
+    expect(mapListPitchStagesResult(samplePitchPipelineResponse)).toEqual({
+      returned_count: 2,
+      stages: [
+        { status_id: 1, label: "Pitched" },
+        { status_id: 483, label: "Waiting for response" },
+      ],
+    });
+    expect(mapPitchCandidateToContactResult(samplePitchCandidateResponse)).toMatchObject({
+      candidate_slug: "candidate-pitch-sample-001",
+      contact_slug: "contact-pitch-sample-001",
+      status_id: 1,
+      status_label: "Pitched",
+      created_by: 99069,
+    });
+    expect(mapUpdateCandidatePitchStageResult(sampleUpdateCandidatePitchStageResponse)).toMatchObject({
+      status_id: 483,
+      status_label: "Waiting for response",
+      remark: "Codex verification",
+      updated_by: 99069,
+    });
+  });
+
+  it("maps pitch history and pitched records without direct contact fields", () => {
+    const history = mapPitchHistoryResult("candidate", "candidate-pitch-sample-001", samplePitchHistoryResponse);
+    expect(history).toEqual({
+      entity_type: "candidate",
+      entity_slug: "candidate-pitch-sample-001",
+      returned_count: 1,
+      history: [
+        {
+          candidate_slug: "candidate-pitch-sample-001",
+          contact_slug: "contact-pitch-sample-001",
+          status_id: 483,
+          status_label: "Waiting for response",
+          remark: "Codex verification",
+          stage_date: "2026-06-03T08:30:00.000000Z",
+          contact_title: null,
+          contact_name: null,
+          candidate_name: null,
+          candidate_position: null,
+          created_on: "2026-06-03T08:28:59.000000Z",
+          updated_on: "2026-06-03T08:30:01.000000Z",
+          updated_by: 99069,
+        },
+      ],
+    });
+
+    expect(history.history[0]).not.toHaveProperty("created_by");
+
+    const pitchedRecords = mapPitchedRecordsResult("candidate", "candidate-pitch-sample-001", samplePitchedRecordsResponse);
+    const record = pitchedRecords.records[0] as Record<string, unknown>;
+    expect(record).toMatchObject({
+      candidate_slug: "candidate-pitch-sample-001",
+      contact_slug: "contact-pitch-sample-001",
+      contact_name: "Sample Contact",
+      candidate_name: "Sample Candidate",
+      candidate_position: "Software Developer",
+    });
+    expect("contact_email" in record).toBe(false);
+    expect("contact_number" in record).toBe(false);
+    expect("candidate_email" in record).toBe(false);
+    expect("candidate_contact_number" in record).toBe(false);
+    expect("resume" in record).toBe(false);
   });
 });
 
@@ -641,6 +779,157 @@ describe("user mappers", () => {
   });
 });
 
+describe("metadata mappers", () => {
+  it("maps teams with pagination and omits expanded user contact info by default", () => {
+    const result = mapListTeamsResult(sampleTeamListResponse, {
+      page: 2,
+      limit: 1,
+    });
+
+    expect(result).toEqual({
+      page: 2,
+      returned_count: 1,
+      total_count: 2,
+      has_more: false,
+      teams: [
+        {
+          team_id: 2253,
+          team_name: "US Team",
+          users: [
+            {
+              id: 101,
+              first_name: "Alex",
+              last_name: "Kim",
+            },
+          ],
+        },
+      ],
+    });
+    expect(result.teams[0]?.users[0]).not.toHaveProperty("email");
+  });
+
+  it("includes expanded team user contact info when requested", () => {
+    const result = mapListTeamsResult(sampleTeamListResponse, {
+      page: 2,
+      limit: 1,
+      includeUserContactInfo: true,
+    });
+
+    expect(result.teams[0]?.users[0]).toMatchObject({
+      email: "alex@example.com",
+      contact_number: "+1-555-0101",
+      avatar: "https://example.com/avatar/alex.png",
+    });
+  });
+
+  it("maps paginated metadata lists", () => {
+    expect(mapListCandidateQuestionsResult(sampleCandidateQuestionListResponse, { page: 1, limit: 2 })).toMatchObject({
+      page: 1,
+      returned_count: 2,
+      total_count: 3,
+      has_more: true,
+      candidate_questions: [
+        { id: 1, question: "Are you authorized to work in the United States?" },
+        { id: 2, question: "What is your expected start date?" },
+      ],
+    });
+    expect(mapListHiringPipelinesResult(sampleHiringPipelineListResponse).hiring_pipelines[1]).toEqual({
+      hiring_pipeline_id: 5067,
+      name: "Executive Search Pipeline",
+    });
+    const languageResult = mapListLanguagesAndProficienciesResult(sampleLanguageListResponse, { limit: 2 });
+    expect(languageResult).toMatchObject({
+      returned_count: 2,
+      total_count: 3,
+      has_more: true,
+      languages: [
+        { language_id: 1, code: "en", language_name: "English" },
+        { language_id: 2, code: "es", language_name: "Spanish" },
+      ],
+    });
+    expect(languageResult.proficiencies[0]).toEqual({ proficiency_id: 1, label: "No proficiency" });
+    expect(languageResult.proficiencies[5]).toEqual({ proficiency_id: 6, label: "Native or bilingual proficiency" });
+    expect(mapListCurrenciesResult(sampleCurrencyListResponse, { page: 2, limit: 2 }).currencies).toEqual([
+      { currency_id: 3, code: "INR", country: "India", currency: "Indian Rupee", symbol: "INR" },
+    ]);
+    expect(mapListQualificationsResult(sampleQualificationListResponse, { limit: 2 })).toMatchObject({
+      returned_count: 2,
+      total_count: 3,
+      has_more: true,
+    });
+    expect(mapListXmlJobboardsResult(sampleXmlJobboardsResponse)).toEqual({
+      default_xml_feeds: [
+        { id: 1, label: "Indeed" },
+        { id: 2, label: "LinkedIn" },
+      ],
+      custom_xml_feeds: [
+        { id: 10, label: "Company Careers" },
+      ],
+    });
+    expect(mapListOffLimitStatusesResult(sampleOffLimitStatusListResponse)).toEqual({
+      returned_count: 2,
+      statuses: [
+        { id: 7, label: "Unavailable", sequence_no: 1, default: false },
+        { id: 213053, label: "Placed", sequence_no: 5, default: true },
+      ],
+    });
+  });
+
+  it("maps off-limit mark responses into compact results", () => {
+    expect(mapMarkCandidateOffLimitResult(sampleMarkCandidateOffLimitResponse)).toEqual({
+      candidate_slugs: ["candidate-sample-001", "candidate-sample-002"],
+      requested_count: 2,
+      status_id: 7,
+      end_date: "29-06-2026",
+      reason: "Codex test",
+      remark: "Records Were Updated",
+    });
+    expect(mapMarkContactOffLimitResult(sampleMarkContactOffLimitResponse)).toEqual({
+      contact_slugs: ["contact-sample-001"],
+      requested_count: 1,
+      status_id: 7,
+      end_date: "29-06-2026",
+      reason: "Codex test",
+      remark: "Records Were Updated",
+    });
+    expect(mapMarkCompanyOffLimitResult(sampleMarkCompanyOffLimitResponse)).toEqual({
+      company_slugs: ["company-sample-001"],
+      requested_count: 1,
+      status_id: 7,
+      end_date: "29-06-2026",
+      reason: "Codex test",
+      remark: "Records Were Updated",
+    });
+  });
+
+  it("maps mark-available responses into a common compact result", () => {
+    expect(mapMarkRecordsAvailableResult("candidate", sampleMarkCandidateAvailableResponse)).toEqual({
+      record_type: "candidate",
+      slugs: ["candidate-sample-001", "candidate-sample-002"],
+      requested_count: 2,
+      mark_contact_available: null,
+      mark_candidate_available: null,
+      remark: "Records Were Updated",
+    });
+    expect(mapMarkRecordsAvailableResult("contact", sampleMarkContactAvailableResponse)).toEqual({
+      record_type: "contact",
+      slugs: ["contact-sample-001"],
+      requested_count: 1,
+      mark_contact_available: null,
+      mark_candidate_available: null,
+      remark: "Records Were Updated",
+    });
+    expect(mapMarkRecordsAvailableResult("company", sampleMarkCompanyAvailableResponse)).toEqual({
+      record_type: "company",
+      slugs: ["company-sample-001"],
+      requested_count: 1,
+      mark_contact_available: false,
+      mark_candidate_available: true,
+      remark: "Records Were Updated",
+    });
+  });
+});
+
 describe("meeting mappers", () => {
   it("maps meeting search results into compact structured output", () => {
     const result = mapSearchMeetingsResult(sampleMeetingSearchResponse);
@@ -887,6 +1176,77 @@ describe("call log mappers", () => {
     expect(summary.custom_call_type).toBeNull();
     expect(summary.call_notes).toBeNull();
   });
+
+  it("maps call type list results into compact id/label rows", () => {
+    const result = mapListCallTypesResult(sampleCallLogTypeListResponse);
+
+    expect(result).toEqual({
+      returned_count: 3,
+      call_types: [
+        { id: 1, label: "Discovery Call" },
+        { id: 2, label: "Pitch Attempt" },
+        { id: 3, label: "Follow Up" },
+      ],
+    });
+  });
+
+  it("maps an empty call type list", () => {
+    const result = mapListCallTypesResult([]);
+    expect(result).toEqual({ returned_count: 0, call_types: [] });
+  });
+
+  it("maps created call logs without exposing the related entity payload", () => {
+    const result = mapCreateCallLogResult(sampleCreatedCallLogResponse);
+
+    expect(result).toEqual({
+      call_log_id: 498700,
+      call_type: "CALL_OUTGOING",
+      custom_call_type: { id: 1, label: "Discovery Call" },
+      call_started_on: "2026-05-20T10:00:00.000000Z",
+      contact_number: "+1-555-0101",
+      call_notes: "Discussed requirements",
+      related_to: "candidate-related-sample-001",
+      related_to_type: "candidate",
+      related_to_view_url: "https://app.recruitcrm.io/candidate/candidate-related-sample-001",
+      duration: 300,
+      associated_candidates: ["candidate-related-sample-001", "candidate-related-sample-002"],
+      associated_contacts: [],
+      associated_companies: [],
+      associated_jobs: [],
+      associated_deals: [],
+      created_on: "2026-05-20T10:05:00.000000Z",
+      updated_on: "2026-05-20T10:05:00.000000Z",
+      created_by: 453,
+      updated_by: 453,
+      collaborator_users: [34, 99],
+      collaborator_teams: [1435],
+    });
+    expect(result).not.toHaveProperty("related");
+  });
+
+  it("returns null related_to_view_url for created call logs with unsupported or missing related context", () => {
+    expect(
+      mapCreateCallLogResult({
+        ...sampleCreatedCallLogResponse,
+        related_to_type: "unsupported",
+      }).related_to_view_url,
+    ).toBeNull();
+
+    expect(
+      mapCreateCallLogResult({
+        ...sampleCreatedCallLogResponse,
+        related_to: null,
+      }).related_to_view_url,
+    ).toBeNull();
+  });
+
+  it("normalizes single custom_call_type object on created call log", () => {
+    const result = mapCreateCallLogResult({
+      ...sampleCreatedCallLogResponse,
+      custom_call_type: null,
+    });
+    expect(result.custom_call_type).toBeNull();
+  });
 });
 
 describe("candidate job assignment hiring stage history mappers", () => {
@@ -950,41 +1310,5 @@ describe("candidate job assignment hiring stage history mappers", () => {
 
     expect(summary.remark).toBeNull();
     expect(summary.updated_by).toBe(453);
-  });
-});
-
-describe("candidate hiring stage update mappers", () => {
-  it("maps update candidate hiring stage response into compact output", () => {
-    const result = mapUpdateCandidateHiringStageResult(sampleCandidateHiringStageUpdateResponse);
-
-    expect(result).toEqual({
-      candidate_slug: "candidate-sample-001",
-      job_slug: "job-sample-001",
-      status_id: 7006,
-      status_label: "Reschedule Interview",
-      remark: "Rescheduled at candidate's request.",
-      stage_date: "2026-05-19T10:00:00.000000Z",
-      visibility: 1,
-      shared_list_url: null,
-      updated_on: "2026-05-19T10:01:00.000000Z",
-      updated_by: 42,
-    });
-  });
-
-  it("maps assign candidate to job response into compact output", () => {
-    const result = mapAssignCandidateToJobResult(sampleCandidateJobAssignmentResponse);
-
-    expect(result).toEqual({
-      candidate_slug: "candidate-sample-001",
-      job_slug: "job-sample-001",
-      status_id: 1,
-      status_label: "Assigned",
-      remark: null,
-      stage_date: "2026-05-19T09:00:00.000000Z",
-      visibility: 1,
-      shared_list_url: null,
-      updated_on: "2026-05-19T09:01:00.000000Z",
-      updated_by: 42,
-    });
   });
 });

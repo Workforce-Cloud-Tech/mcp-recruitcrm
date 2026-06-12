@@ -85,6 +85,7 @@ export function filterCandidateCustomFields(
 export function validateCustomFieldFilters(
   filters: SearchCandidateCustomFieldFilter[],
   fields: RecruitCrmCandidateCustomField[],
+  entityLabel = "candidate",
 ): void {
   const fieldsById = new Map(fields.map((field) => [field.field_id, field]));
 
@@ -92,7 +93,7 @@ export function validateCustomFieldFilters(
     const field = fieldsById.get(filter.field_id);
 
     if (!field) {
-      throw new RecruitCrmApiError(`Unknown candidate custom field field_id: ${filter.field_id}.`);
+      throw new RecruitCrmApiError(`Unknown ${entityLabel} custom field field_id: ${filter.field_id}.`);
     }
   }
 }

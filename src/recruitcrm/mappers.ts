@@ -1,21 +1,22 @@
 import type {
   ActivityRelatedSummary,
-  AssignCandidateToJobResult,
   AssignedCandidateSummary,
   CandidateHiringStagesResult,
   JobStatusesResult,
-  RecruitCrmCandidateHiringStageUpdateResponse,
-  RecruitCrmCandidateJobAssignmentResponse,
   RecruitCrmJobStatusListResponse,
-  UpdateCandidateHiringStageResult,
   CallLogSummary,
   CallLogTypeSummary,
   CandidateHistoryCreateResponse,
+  CreateCallLogResult,
+  CreatedCallLog,
+  ListCallTypesResult,
+  RecruitCrmCallLogTypeListResponse,
   CandidateJobAssignmentHiringStageHistoryItem,
   CandidateJobAssignmentHiringStageHistoryResult,
   CandidateSummary,
   ContactSummary,
   CreatedCandidate,
+  CreatedCompany,
   CreatedHotlist,
   CreatedMeeting,
   CreatedNote,
@@ -24,6 +25,7 @@ import type {
   CreateCandidateHistoryError,
   CreateCandidateHistoryOperationResult,
   CreateCandidateResult,
+  CreateCompanyResult,
   CreateHotlistResult,
   CreateMeetingResult,
   CreateNoteResult,
@@ -102,6 +104,56 @@ import type {
   TaskTypeSummary,
   UserSummary,
   UserTeamSummary,
+  AssignCandidateToJobResult,
+  ContactStageSummary,
+  CreateContactResult,
+  CreatedContact,
+  CreatedJob,
+  CreateJobResult,
+  ListContactStagesResult,
+  ListOffLimitStatusesResult,
+  ListCandidateQuestionsResult,
+  ListCurrenciesResult,
+  ListHiringPipelinesResult,
+  ListLanguagesAndProficienciesResult,
+  ListQualificationsResult,
+  ListTeamsResult,
+  ListXmlJobboardsResult,
+  RecruitCrmCandidateHiringStageUpdateResponse,
+  RecruitCrmCandidateJobAssignmentResponse,
+  RecruitCrmCandidateQuestion,
+  RecruitCrmContactStagePipelineResponse,
+  RecruitCrmCurrency,
+  RecruitCrmHiringPipelineSummary,
+  RecruitCrmLanguage,
+  RecruitCrmMarkCandidateOffLimitResponse,
+  RecruitCrmMarkCompanyOffLimitResponse,
+  RecruitCrmMarkContactOffLimitResponse,
+  RecruitCrmMarkRecordsAvailableResponse,
+  RecruitCrmOffLimitStatusListResponse,
+  RecruitCrmPitchActionResponse,
+  RecruitCrmPitchPipelineResponse,
+  RecruitCrmPitchRecord,
+  RecruitCrmPitchRecordsResponse,
+  RecruitCrmQualification,
+  RecruitCrmTeam,
+  RecruitCrmTeamUser,
+  RecruitCrmXmlJobboard,
+  RecruitCrmXmlJobboardsResponse,
+  MarkCandidateOffLimitResult,
+  MarkCompanyOffLimitResult,
+  MarkContactOffLimitResult,
+  MarkRecordsAvailableRecordType,
+  MarkRecordsAvailableResult,
+  ListPitchStagesResult,
+  PitchCandidateToContactResult,
+  PitchEntityType,
+  PitchHistoryRecordSummary,
+  PitchHistoryResult,
+  PitchRecordSummary,
+  PitchedRecordsResult,
+  UpdateCandidatePitchStageResult,
+  UpdateCandidateHiringStageResult,
 } from "./types.js";
 
 export function mapSearchCandidatesResult(
@@ -170,6 +222,135 @@ export function mapListUsersResult(
   };
 }
 
+export function mapListTeamsResult(
+  response: RecruitCrmTeam[],
+  options: { page?: number; limit?: number; includeUserContactInfo?: boolean } = {},
+): ListTeamsResult {
+  const page = options.page ?? 1;
+  const limit = options.limit ?? 100;
+  const teams = paginateArray(response, page, limit);
+
+  return {
+    page,
+    returned_count: teams.length,
+    total_count: response.length,
+    has_more: hasMore(response.length, page, limit),
+    teams: teams.map((team) => mapTeamSummary(team, { includeUserContactInfo: options.includeUserContactInfo })),
+  };
+}
+
+export function mapListCandidateQuestionsResult(
+  response: RecruitCrmCandidateQuestion[],
+  options: { page?: number; limit?: number } = {},
+): ListCandidateQuestionsResult {
+  const page = options.page ?? 1;
+  const limit = options.limit ?? 100;
+  const candidateQuestions = paginateArray(response, page, limit);
+
+  return {
+    page,
+    returned_count: candidateQuestions.length,
+    total_count: response.length,
+    has_more: hasMore(response.length, page, limit),
+    candidate_questions: candidateQuestions.map((question) => ({
+      id: normalizeNumber(question.id),
+      question: normalizeString(question.question),
+    })),
+  };
+}
+
+export function mapListHiringPipelinesResult(
+  response: RecruitCrmHiringPipelineSummary[],
+  options: { page?: number; limit?: number } = {},
+): ListHiringPipelinesResult {
+  const page = options.page ?? 1;
+  const limit = options.limit ?? 100;
+  const hiringPipelines = paginateArray(response, page, limit);
+
+  return {
+    page,
+    returned_count: hiringPipelines.length,
+    total_count: response.length,
+    has_more: hasMore(response.length, page, limit),
+    hiring_pipelines: hiringPipelines.map((pipeline) => ({
+      hiring_pipeline_id: normalizeNumber(pipeline.id),
+      name: normalizeString(pipeline.name),
+    })),
+  };
+}
+
+export function mapListLanguagesAndProficienciesResult(
+  response: RecruitCrmLanguage[],
+  options: { page?: number; limit?: number } = {},
+): ListLanguagesAndProficienciesResult {
+  const page = options.page ?? 1;
+  const limit = options.limit ?? 100;
+  const languages = paginateArray(response, page, limit);
+
+  return {
+    page,
+    returned_count: languages.length,
+    total_count: response.length,
+    has_more: hasMore(response.length, page, limit),
+    languages: languages.map((language) => ({
+      language_id: normalizeNumber(language.language_id),
+      code: normalizeString(language.code),
+      language_name: normalizeString(language.language_name),
+    })),
+    proficiencies: LANGUAGE_PROFICIENCIES,
+  };
+}
+
+export function mapListCurrenciesResult(
+  response: RecruitCrmCurrency[],
+  options: { page?: number; limit?: number } = {},
+): ListCurrenciesResult {
+  const page = options.page ?? 1;
+  const limit = options.limit ?? 100;
+  const currencies = paginateArray(response, page, limit);
+
+  return {
+    page,
+    returned_count: currencies.length,
+    total_count: response.length,
+    has_more: hasMore(response.length, page, limit),
+    currencies: currencies.map((currency) => ({
+      currency_id: normalizeNumber(currency.currency_id),
+      code: normalizeString(currency.code),
+      country: normalizeString(currency.country),
+      currency: normalizeString(currency.currency),
+      symbol: normalizeString(currency.symbol),
+    })),
+  };
+}
+
+export function mapListQualificationsResult(
+  response: RecruitCrmQualification[],
+  options: { page?: number; limit?: number } = {},
+): ListQualificationsResult {
+  const page = options.page ?? 1;
+  const limit = options.limit ?? 100;
+  const qualifications = paginateArray(response, page, limit);
+
+  return {
+    page,
+    returned_count: qualifications.length,
+    total_count: response.length,
+    has_more: hasMore(response.length, page, limit),
+    qualifications: qualifications.map((qualification) => ({
+      qualification_id: normalizeNumber(qualification.qualification_id),
+      label: normalizeString(qualification.label),
+    })),
+  };
+}
+
+export function mapListXmlJobboardsResult(response: RecruitCrmXmlJobboardsResponse): ListXmlJobboardsResult {
+  return {
+    default_xml_feeds: (response.default_xml_feeds ?? []).map(mapXmlJobboardSummary),
+    custom_xml_feeds: (response.custom_xml_feeds ?? []).map(mapXmlJobboardSummary),
+  };
+}
+
 export function mapCreateHotlistResult(hotlist: CreatedHotlist): CreateHotlistResult {
   return {
     hotlist_id: normalizeNumber(hotlist.id),
@@ -177,6 +358,161 @@ export function mapCreateHotlistResult(hotlist: CreatedHotlist): CreateHotlistRe
     related_to_type: normalizeString(hotlist.related_to_type),
     shared: normalizeBoolean(hotlist.shared),
     created_by: normalizeNumber(hotlist.created_by),
+  };
+}
+
+export function mapCreatedCompanyResult(
+  company: CreatedCompany,
+  action: "created" | "updated",
+): CreateCompanyResult {
+  const companySlug = normalizeString(company.slug) ?? "";
+  return {
+    action,
+    company_slug: companySlug,
+    company_id: normalizeNumber(company.id),
+    company_name: normalizeString(company.company_name),
+    website: normalizeString(company.website),
+    owner: normalizeNumber(company.owner),
+    created_on: normalizeString(company.created_on),
+    updated_on: normalizeString(company.updated_on),
+    view_url: buildRecruitCrmEntityViewUrl("company", companySlug),
+  };
+}
+
+export function mapCreatedJobResult(
+  job: CreatedJob,
+  action: "created" | "updated",
+): CreateJobResult {
+  const jobSlug = normalizeString(job.slug) ?? "";
+  return {
+    action,
+    job_slug: jobSlug,
+    job_id: normalizeNumber(job.id),
+    name: normalizeString(job.name),
+    company_slug: normalizeString(job.company_slug),
+    contact_slug: normalizeString(job.contact_slug),
+    job_status: normalizeJobStatus(job.job_status),
+    owner: normalizeOwnerId(job.owner),
+    enable_job_application_form: normalizeBoolean(job.enable_job_application_form),
+    application_form_url: normalizeString(job.application_form_url),
+    created_on: normalizeString(job.created_on),
+    updated_on: normalizeString(job.updated_on),
+    view_url: buildRecruitCrmEntityViewUrl("job", jobSlug),
+  };
+}
+
+export function mapCreatedContactResult(
+  contact: CreatedContact,
+  action: "created" | "updated",
+): CreateContactResult {
+  const contactSlug = normalizeString(contact.slug) ?? "";
+  return {
+    action,
+    contact_slug: contactSlug,
+    contact_id: normalizeNumber(contact.id),
+    first_name: normalizeString(contact.first_name),
+    last_name: normalizeString(contact.last_name),
+    designation: normalizeString(contact.designation),
+    company_slug: normalizeString(contact.company_slug),
+    owner: normalizeNumber(contact.owner as string | number | null | undefined),
+    created_on: normalizeString(contact.created_on),
+    updated_on: normalizeString(contact.updated_on),
+    view_url: buildRecruitCrmEntityViewUrl("contact", contactSlug),
+  };
+}
+
+export function mapListContactStagesResult(
+  response: RecruitCrmContactStagePipelineResponse,
+): ListContactStagesResult {
+  return {
+    returned_count: response.length,
+    stages: response.map(
+      (stage): ContactStageSummary => ({
+        stage_id: normalizeNumber(stage.stage_id),
+        label: normalizeString(stage.label),
+      }),
+    ),
+  };
+}
+
+export function mapListOffLimitStatusesResult(
+  response: RecruitCrmOffLimitStatusListResponse,
+): ListOffLimitStatusesResult {
+  return {
+    returned_count: response.length,
+    statuses: response.map((status) => ({
+      id: normalizeNumber(status.id),
+      label: normalizeString(status.status_label),
+      sequence_no: normalizeNumber(status.sequence_no),
+      default: normalizeBoolean(status.default),
+    })),
+  };
+}
+
+export function mapMarkCandidateOffLimitResult(
+  response: RecruitCrmMarkCandidateOffLimitResponse,
+): MarkCandidateOffLimitResult {
+  const candidateSlugs = normalizeStringList(response.candidate_slugs);
+
+  return {
+    candidate_slugs: candidateSlugs,
+    requested_count: candidateSlugs.length,
+    status_id: normalizeNumber(response.status_id),
+    end_date: normalizeString(response.end_date),
+    reason: normalizeString(response.reason),
+    remark: normalizeString(response.remark),
+  };
+}
+
+export function mapMarkContactOffLimitResult(
+  response: RecruitCrmMarkContactOffLimitResponse,
+): MarkContactOffLimitResult {
+  const contactSlugs = normalizeStringList(response.contact_slugs);
+
+  return {
+    contact_slugs: contactSlugs,
+    requested_count: contactSlugs.length,
+    status_id: normalizeNumber(response.status_id),
+    end_date: normalizeString(response.end_date),
+    reason: normalizeString(response.reason),
+    remark: normalizeString(response.remark),
+  };
+}
+
+export function mapMarkCompanyOffLimitResult(
+  response: RecruitCrmMarkCompanyOffLimitResponse,
+): MarkCompanyOffLimitResult {
+  const companySlugs = normalizeStringList(response.company_slugs);
+
+  return {
+    company_slugs: companySlugs,
+    requested_count: companySlugs.length,
+    status_id: normalizeNumber(response.status_id),
+    end_date: normalizeString(response.end_date),
+    reason: normalizeString(response.reason),
+    remark: normalizeString(response.remark),
+  };
+}
+
+export function mapMarkRecordsAvailableResult(
+  recordType: MarkRecordsAvailableRecordType,
+  response: RecruitCrmMarkRecordsAvailableResponse,
+): MarkRecordsAvailableResult {
+  const slugValue =
+    recordType === "candidate"
+      ? response.candidate_slugs
+      : recordType === "contact"
+        ? response.contact_slugs
+        : response.company_slugs;
+  const slugs = normalizeStringList(slugValue);
+
+  return {
+    record_type: recordType,
+    slugs,
+    requested_count: slugs.length,
+    mark_contact_available: normalizeBoolean(response.mark_contact_available),
+    mark_candidate_available: normalizeBoolean(response.mark_candidate_available),
+    remark: normalizeString(response.remark),
   };
 }
 
@@ -267,7 +603,7 @@ export function mapJobSummary(job: RecruitCrmJob): JobSummary {
     country: normalizeString(job.country),
     enable_job_application_form: normalizeBoolean(job.enable_job_application_form),
     application_form_url: normalizeString(job.application_form_url),
-    owner: normalizeNumber(job.owner),
+    owner: normalizeOwnerId(job.owner),
     created_on: normalizeString(job.created_on),
     updated_on: normalizeString(job.updated_on),
     hiring_pipeline_id: normalizeNumber(job.hiring_pipeline_id),
@@ -521,6 +857,45 @@ export function mapSearchCallLogsResult(response: RecruitCrmCallLogSearchRespons
   };
 }
 
+export function mapListCallTypesResult(types: RecruitCrmCallLogTypeListResponse): ListCallTypesResult {
+  return {
+    returned_count: types.length,
+    call_types: types.map((t) => ({
+      id: normalizeIdentifier(t.id),
+      label: normalizeString(t.label),
+    })),
+  };
+}
+
+export function mapCreateCallLogResult(callLog: CreatedCallLog): CreateCallLogResult {
+  const relatedTo = normalizeString(callLog.related_to);
+  const relatedToType = normalizeString(callLog.related_to_type);
+
+  return {
+    call_log_id: normalizeNumber(callLog.id),
+    call_type: normalizeString(callLog.call_type),
+    custom_call_type: normalizeSingleCallLogType(callLog.custom_call_type),
+    call_started_on: normalizeString(callLog.call_started_on),
+    contact_number: normalizeString(callLog.contact_number),
+    call_notes: normalizeString(callLog.call_notes),
+    related_to: relatedTo,
+    related_to_type: relatedToType,
+    related_to_view_url: buildRecruitCrmEntityViewUrl(relatedToType, relatedTo),
+    duration: normalizeScalar(callLog.duration),
+    associated_candidates: normalizeStringArray(callLog.associated_candidates),
+    associated_contacts: normalizeStringArray(callLog.associated_contacts),
+    associated_companies: normalizeStringArray(callLog.associated_companies),
+    associated_jobs: normalizeStringArray(callLog.associated_jobs),
+    associated_deals: normalizeStringArray(callLog.associated_deals),
+    created_on: normalizeString(callLog.created_on),
+    updated_on: normalizeString(callLog.updated_on),
+    created_by: normalizeNumber(callLog.created_by),
+    updated_by: normalizeNumber(callLog.updated_by),
+    collaborator_users: normalizeMeetingCollaboratorIds(callLog.collaborator_users),
+    collaborator_teams: normalizeMeetingCollaboratorIds(callLog.collaborator_teams),
+  };
+}
+
 export function mapJobAssignedCandidatesResult(
   jobSlug: string,
   response: RecruitCrmJobAssignedCandidatesResponse,
@@ -543,6 +918,56 @@ export function mapCandidateHiringStagesResult(
   };
 }
 
+export function mapListPitchStagesResult(response: RecruitCrmPitchPipelineResponse): ListPitchStagesResult {
+  return {
+    returned_count: response.length,
+    stages: response.map((stage) => ({
+      status_id: normalizeNumber(stage.status_id),
+      label: normalizeString(stage.label),
+    })),
+  };
+}
+
+export function mapPitchCandidateToContactResult(
+  response: RecruitCrmPitchActionResponse,
+): PitchCandidateToContactResult {
+  return mapPitchActionRecord(response.data);
+}
+
+export function mapUpdateCandidatePitchStageResult(
+  response: RecruitCrmPitchActionResponse,
+): UpdateCandidatePitchStageResult {
+  return mapPitchActionRecord(response.data);
+}
+
+export function mapPitchHistoryResult(
+  entityType: PitchEntityType,
+  entitySlug: string,
+  response: RecruitCrmPitchRecordsResponse,
+): PitchHistoryResult {
+  const records = response.data?.records ?? [];
+  return {
+    entity_type: entityType,
+    entity_slug: entitySlug,
+    returned_count: records.length,
+    history: records.map((record) => mapPitchHistoryRecordSummary(record, entityType, entitySlug)),
+  };
+}
+
+export function mapPitchedRecordsResult(
+  entityType: PitchEntityType,
+  entitySlug: string,
+  response: RecruitCrmPitchRecordsResponse,
+): PitchedRecordsResult {
+  const records = response.data?.records ?? [];
+  return {
+    entity_type: entityType,
+    entity_slug: entitySlug,
+    returned_count: records.length,
+    records: records.map((record) => mapPitchRecordSummary(record, entityType, entitySlug)),
+  };
+}
+
 export function mapJobStatusesResult(
   response: RecruitCrmJobStatusListResponse,
 ): JobStatusesResult {
@@ -552,37 +977,6 @@ export function mapJobStatusesResult(
       id: normalizeNumber(status.id),
       label: normalizeString(status.label),
     })),
-  };
-}
-
-export function mapUpdateCandidateHiringStageResult(
-  response: RecruitCrmCandidateHiringStageUpdateResponse,
-): UpdateCandidateHiringStageResult {
-  return mapCandidateJobAssignmentResponse(response);
-}
-
-export function mapAssignCandidateToJobResult(
-  response: RecruitCrmCandidateJobAssignmentResponse,
-): AssignCandidateToJobResult {
-  return mapCandidateJobAssignmentResponse(response);
-}
-
-function mapCandidateJobAssignmentResponse(
-  response: RecruitCrmCandidateHiringStageUpdateResponse,
-): UpdateCandidateHiringStageResult {
-  return {
-    candidate_slug: normalizeString(response.candidate_slug),
-    job_slug: normalizeString(response.job_slug),
-    status_id: normalizeNumber(response.status?.status_id),
-    status_label: normalizeString(response.status?.label),
-    remark: normalizeString(response.remark),
-    stage_date: normalizeString(response.stage_date),
-    visibility: normalizeNumber(
-      typeof response.visibility === "boolean" ? Number(response.visibility) : response.visibility,
-    ),
-    shared_list_url: normalizeString(response.shared_list_url),
-    updated_on: normalizeString(response.updated_on),
-    updated_by: normalizeNumber(response.updated_by),
   };
 }
 
@@ -721,6 +1115,72 @@ export function mapCandidateJobAssignmentHiringStageHistoryItem(
   };
 }
 
+const LANGUAGE_PROFICIENCIES = [
+  { proficiency_id: 1, label: "No proficiency" },
+  { proficiency_id: 2, label: "Elementary proficiency" },
+  { proficiency_id: 3, label: "Limited working proficiency" },
+  { proficiency_id: 4, label: "Professional working proficiency" },
+  { proficiency_id: 5, label: "Full professional proficiency" },
+  { proficiency_id: 6, label: "Native or bilingual proficiency" },
+];
+
+function mapTeamSummary(
+  team: RecruitCrmTeam,
+  options: { includeUserContactInfo?: boolean } = {},
+): ListTeamsResult["teams"][number] {
+  return {
+    team_id: normalizeNumber(team.team_id),
+    team_name: normalizeString(team.team_name),
+    users: (team.users ?? []).flatMap((user) => {
+      if (user === null) return [];
+      if (typeof user === "number" || typeof user === "string") {
+        const userId = normalizeNumber(user);
+        return userId === null ? [] : [userId];
+      }
+
+      return [mapTeamUserSummary(user, options)];
+    }),
+  };
+}
+
+function mapTeamUserSummary(
+  user: RecruitCrmTeamUser,
+  options: { includeUserContactInfo?: boolean } = {},
+): ListTeamsResult["teams"][number]["users"][number] {
+  const summary = {
+    id: normalizeNumber(user.id),
+    first_name: normalizeString(user.first_name),
+    last_name: normalizeString(user.last_name),
+  };
+
+  if (!options.includeUserContactInfo) {
+    return summary;
+  }
+
+  return {
+    ...summary,
+    email: normalizeString(user.email),
+    contact_number: normalizeString(user.contact_number),
+    avatar: normalizeString(user.avatar),
+  };
+}
+
+function mapXmlJobboardSummary(jobboard: RecruitCrmXmlJobboard): ListXmlJobboardsResult["default_xml_feeds"][number] {
+  return {
+    id: normalizeNumber(jobboard.id),
+    label: normalizeString(jobboard.label),
+  };
+}
+
+function paginateArray<T>(items: T[], page: number, limit: number): T[] {
+  const start = (page - 1) * limit;
+  return items.slice(start, start + limit);
+}
+
+function hasMore(totalCount: number, page: number, limit: number): boolean {
+  return page * limit < totalCount;
+}
+
 function normalizeJobStatus(jobStatus: RecruitCrmJobStatus | null | undefined): JobStatusSummary | null {
   if (jobStatus === undefined || jobStatus === null) {
     return null;
@@ -767,6 +1227,14 @@ function normalizeStringPreserveWhitespace(value: string | number | null | undef
   }
 
   return typeof value === "number" ? String(value) : value;
+}
+
+function normalizeOwnerId(value: RecruitCrmJob["owner"]): number | null {
+  if (value && typeof value === "object" && "id" in value) {
+    return normalizeNumber(value.id);
+  }
+
+  return normalizeNumber(value as string | number | null | undefined);
 }
 
 function buildRecruitCrmEntityViewUrl(relatedToType: string | null, relatedTo: string | null): string | null {
@@ -968,17 +1436,29 @@ function normalizeTaskCollaborators(
 }
 
 function normalizeTaskCollaboratorUsers(
-  users: RecruitCrmTaskCollaboratorUser[] | null | undefined,
+  users: Array<RecruitCrmTaskCollaboratorUser | number | string | null> | null | undefined,
 ): TaskCollaboratorUserSummary[] {
   if (!users || users.length === 0) {
     return [];
   }
 
-  return users.map((user) => ({
-    id: normalizeNumber(user.id),
-    first_name: normalizeString(user.first_name),
-    last_name: normalizeString(user.last_name),
-  }));
+  return users
+    .filter((user): user is RecruitCrmTaskCollaboratorUser | number | string => user !== null)
+    .map((user) => {
+      if (typeof user === "number" || typeof user === "string") {
+        return {
+          id: normalizeNumber(user),
+          first_name: null,
+          last_name: null,
+        };
+      }
+
+      return {
+        id: normalizeNumber(user.id),
+        first_name: normalizeString(user.first_name),
+        last_name: normalizeString(user.last_name),
+      };
+    });
 }
 
 function normalizeTaskCollaboratorTeams(
@@ -1201,8 +1681,23 @@ function normalizeCallLogTypes(
   }));
 }
 
-function mapActivityRelated(related: RecruitCrmActivityRelated | null | undefined): ActivityRelatedSummary | null {
-  if (!related) {
+function normalizeSingleCallLogType(
+  callLogTypes: RecruitCrmCallLogType | RecruitCrmCallLogType[] | null | undefined,
+): CallLogTypeSummary | null {
+  if (callLogTypes === undefined || callLogTypes === null) {
+    return null;
+  }
+
+  const callLogType = Array.isArray(callLogTypes) ? callLogTypes[0] : callLogTypes;
+
+  return callLogType === undefined ? null : {
+    id: normalizeIdentifier(callLogType.id),
+    label: normalizeString(callLogType.label),
+  };
+}
+
+function mapActivityRelated(related: RecruitCrmActivityRelated | string | null | undefined): ActivityRelatedSummary | null {
+  if (!related || typeof related === "string") {
     return null;
   }
 
@@ -1253,4 +1748,95 @@ function normalizeScalar(value: number | string | null | undefined): string | nu
 
   const trimmed = value.trim();
   return trimmed === "" ? null : trimmed;
+}
+
+export function mapUpdateCandidateHiringStageResult(
+  response: RecruitCrmCandidateHiringStageUpdateResponse,
+): UpdateCandidateHiringStageResult {
+  return mapCandidateJobAssignmentResponse(response);
+}
+
+export function mapAssignCandidateToJobResult(
+  response: RecruitCrmCandidateJobAssignmentResponse,
+): AssignCandidateToJobResult {
+  return mapCandidateJobAssignmentResponse(response);
+}
+
+function mapCandidateJobAssignmentResponse(
+  response: RecruitCrmCandidateHiringStageUpdateResponse,
+): UpdateCandidateHiringStageResult {
+  return {
+    candidate_slug: normalizeString(response.candidate_slug),
+    job_slug: normalizeString(response.job_slug),
+    status_id: normalizeNumber(response.status?.status_id),
+    status_label: normalizeString(response.status?.label),
+    remark: normalizeString(response.remark),
+    stage_date: normalizeString(response.stage_date),
+    visibility: normalizeNumber(
+      typeof response.visibility === "boolean" ? Number(response.visibility) : response.visibility,
+    ),
+    shared_list_url: normalizeString(response.shared_list_url),
+    updated_on: normalizeString(response.updated_on),
+    updated_by: normalizeNumber(response.updated_by),
+  };
+}
+
+function mapPitchActionRecord(record: RecruitCrmPitchRecord): PitchCandidateToContactResult {
+  return {
+    candidate_slug: normalizeString(record.candidate_slug),
+    contact_slug: normalizeString(record.contact_slug),
+    status_id: normalizeNumber(record.status_id),
+    status_label: normalizeString(record.status_label ?? record.candidate_status),
+    remark: normalizeString(record.remark),
+    stage_date: normalizeString(record.stage_date),
+    created_on: normalizeString(record.created_on),
+    created_by: normalizeNumber(record.created_by),
+    updated_on: normalizeString(record.updated_on),
+    updated_by: normalizeNumber(record.updated_by),
+  };
+}
+
+function mapPitchRecordSummary(
+  record: RecruitCrmPitchRecord,
+  entityType?: PitchEntityType,
+  entitySlug?: string,
+): PitchRecordSummary {
+  return {
+    candidate_slug: normalizeString(record.candidate_slug ?? (entityType === "candidate" ? entitySlug : undefined)),
+    contact_slug: normalizeString(record.contact_slug ?? (entityType === "contact" ? entitySlug : undefined)),
+    status_id: normalizeNumber(record.status_id),
+    status_label: normalizeString(record.status_label ?? record.candidate_status),
+    remark: normalizeString(record.remark),
+    stage_date: normalizeString(record.stage_date),
+    contact_title: normalizeString(record.contact_title),
+    contact_name: normalizeString(record.contact_name),
+    candidate_name: normalizeString(record.candidate_name),
+    candidate_position: normalizeString(record.candidate_position),
+    created_on: normalizeString(record.created_on),
+    created_by: normalizeNumber(record.created_by),
+    updated_on: normalizeString(record.updated_on),
+    updated_by: normalizeNumber(record.updated_by),
+  };
+}
+
+function mapPitchHistoryRecordSummary(
+  record: RecruitCrmPitchRecord,
+  entityType?: PitchEntityType,
+  entitySlug?: string,
+): PitchHistoryRecordSummary {
+  return {
+    candidate_slug: normalizeString(record.candidate_slug ?? (entityType === "candidate" ? entitySlug : undefined)),
+    contact_slug: normalizeString(record.contact_slug ?? (entityType === "contact" ? entitySlug : undefined)),
+    status_id: normalizeNumber(record.status_id),
+    status_label: normalizeString(record.status_label ?? record.candidate_status),
+    remark: normalizeString(record.remark),
+    stage_date: normalizeString(record.stage_date),
+    contact_title: normalizeString(record.contact_title),
+    contact_name: normalizeString(record.contact_name),
+    candidate_name: normalizeString(record.candidate_name),
+    candidate_position: normalizeString(record.candidate_position),
+    created_on: normalizeString(record.created_on),
+    updated_on: normalizeString(record.updated_on),
+    updated_by: normalizeNumber(record.updated_by),
+  };
 }

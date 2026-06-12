@@ -1,13 +1,22 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { RecruitCrmClient } from "../src/recruitcrm/client.js";
+import {
+  RecruitCrmClient,
+  buildSearchCandidatesRequest,
+  buildSearchJobsRequest,
+  buildSearchCompaniesRequest,
+  buildSearchContactsRequest,
+} from "../src/recruitcrm/client.js";
 import type { HttpRequestOptions, HttpResponse } from "../src/recruitcrm/http.js";
 import {
   sampleCallLogSearchResponse,
+  sampleCallLogTypeListResponse,
   sampleCandidateHistoryCreateResponse,
   sampleCandidateHiringStageUpdateResponse,
   sampleCandidateJobAssignmentResponse,
+  sampleCandidateQuestionListResponse,
   sampleHiringPipelineResponse,
+  sampleHiringPipelineListResponse,
   sampleCandidateJobAssignmentHiringStageHistoryResponse,
   sampleCandidateDetailResponse,
   sampleCompanyDetailResponse,
@@ -15,6 +24,8 @@ import {
   sampleContactDetailResponse,
   sampleContactSearchResponse,
   sampleCreatedCandidateResponse,
+  sampleCreatedContactResponse,
+  sampleCreatedCallLogResponse,
   sampleCreatedHotlistResponse,
   sampleCreatedNoteResponse,
   sampleCreatedTaskResponse,
@@ -23,13 +34,30 @@ import {
   sampleJobDetailResponse,
   sampleJobSearchResponse,
   sampleMeetingSearchResponse,
+  sampleMarkCandidateAvailableResponse,
+  sampleMarkCandidateOffLimitResponse,
+  sampleMarkCompanyAvailableResponse,
+  sampleMarkCompanyOffLimitResponse,
+  sampleMarkContactAvailableResponse,
+  sampleMarkContactOffLimitResponse,
   sampleNoteSearchResponse,
   sampleNoteTypeListResponse,
+  sampleOffLimitStatusListResponse,
+  samplePitchCandidateResponse,
+  samplePitchHistoryResponse,
+  samplePitchedRecordsResponse,
+  samplePitchPipelineResponse,
+  sampleUpdateCandidatePitchStageResponse,
+  sampleCurrencyListResponse,
+  sampleLanguageListResponse,
+  sampleQualificationListResponse,
   sampleSearchResponse,
   sampleTaskSearchResponse,
   sampleTaskTypeListResponse,
+  sampleTeamListResponse,
   sampleUserListResponse,
   sampleUserListResponseBareTeams,
+  sampleXmlJobboardsResponse,
 } from "./fixtures.js";
 
 const baseConfig = {
@@ -42,6 +70,207 @@ const baseConfig = {
 describe("RecruitCrmClient", () => {
   afterEach(() => {
     vi.restoreAllMocks();
+  });
+
+  it("lists metadata endpoints", async () => {
+    const transport = vi.fn(async (request: HttpRequestOptions): Promise<HttpResponse> => {
+      if (request.url.pathname.endsWith("/teams")) {
+        expect(request.url.searchParams.get("expand")).toBe("user");
+        return { statusCode: 200, bodyText: JSON.stringify(sampleTeamListResponse) };
+      }
+
+      if (request.url.pathname.endsWith("/candidate-questions")) {
+        return { statusCode: 200, bodyText: JSON.stringify(sampleCandidateQuestionListResponse) };
+      }
+
+      if (request.url.pathname.endsWith("/hiring-pipelines")) {
+        return { statusCode: 200, bodyText: JSON.stringify(sampleHiringPipelineListResponse) };
+      }
+
+      if (request.url.pathname.endsWith("/languages")) {
+        return { statusCode: 200, bodyText: JSON.stringify(sampleLanguageListResponse) };
+      }
+
+      if (request.url.pathname.endsWith("/currencies")) {
+        return { statusCode: 200, bodyText: JSON.stringify(sampleCurrencyListResponse) };
+      }
+
+      if (request.url.pathname.endsWith("/qualifications")) {
+        return { statusCode: 200, bodyText: JSON.stringify(sampleQualificationListResponse) };
+      }
+
+      if (request.url.pathname.endsWith("/jobs/list-xml-jobboards")) {
+        return { statusCode: 200, bodyText: JSON.stringify(sampleXmlJobboardsResponse) };
+      }
+
+      throw new Error(`Unexpected request: ${request.url.pathname}`);
+    });
+    const client = new RecruitCrmClient(baseConfig, transport);
+
+    await expect(client.listTeams({ expand: "user" })).resolves.toHaveLength(2);
+    await expect(client.listCandidateQuestions()).resolves.toHaveLength(3);
+    await expect(client.listHiringPipelines()).resolves.toHaveLength(2);
+    await expect(client.listLanguages()).resolves.toHaveLength(3);
+    await expect(client.listCurrencies()).resolves.toHaveLength(3);
+    await expect(client.listQualifications()).resolves.toHaveLength(3);
+    await expect(client.listXmlJobboards()).resolves.toEqual(sampleXmlJobboardsResponse);
+    expect(transport).toHaveBeenCalledTimes(7);
+  });
+
+  it("lists off-limit statuses and marks entities off-limit", async () => {
+    const transport = vi.fn(async (request: HttpRequestOptions): Promise<HttpResponse> => {
+      if (request.url.pathname.endsWith("/off-limit-status")) {
+        expect(request.method).toBe("GET");
+        return { statusCode: 200, bodyText: JSON.stringify(sampleOffLimitStatusListResponse) };
+      }
+
+      if (request.url.pathname.endsWith("/candidates/mark-off-limit")) {
+        expect(request.method).toBe("POST");
+        expect(request.jsonBody).toEqual({
+          candidate_slugs: "candidate-sample-001,candidate-sample-002",
+          status_id: 7,
+          end_date: "29-06-2026",
+          reason: "Codex test",
+        });
+        return { statusCode: 200, bodyText: JSON.stringify(sampleMarkCandidateOffLimitResponse) };
+      }
+
+      if (request.url.pathname.endsWith("/contacts/mark-off-limit")) {
+        expect(request.method).toBe("POST");
+        expect(request.jsonBody).toEqual({
+          contact_slugs: "contact-sample-001",
+          status_id: 7,
+          end_date: "29-06-2026",
+          reason: "Codex test",
+        });
+        return { statusCode: 200, bodyText: JSON.stringify(sampleMarkContactOffLimitResponse) };
+      }
+
+      if (request.url.pathname.endsWith("/companies/mark-off-limit")) {
+        expect(request.method).toBe("POST");
+        expect(request.jsonBody).toEqual({
+          company_slugs: "company-sample-001",
+          status_id: 7,
+          end_date: "29-06-2026",
+          reason: "Codex test",
+          mark_contact_off_limit: false,
+          mark_candidate_off_limit: true,
+        });
+        return { statusCode: 200, bodyText: JSON.stringify(sampleMarkCompanyOffLimitResponse) };
+      }
+
+      if (request.url.pathname.endsWith("/candidates/mark-as-available")) {
+        expect(request.method).toBe("POST");
+        expect(request.jsonBody).toEqual({
+          candidate_slugs: "candidate-sample-001,candidate-sample-002",
+        });
+        return { statusCode: 200, bodyText: JSON.stringify(sampleMarkCandidateAvailableResponse) };
+      }
+
+      if (request.url.pathname.endsWith("/contacts/mark-as-available")) {
+        expect(request.method).toBe("POST");
+        expect(request.jsonBody).toEqual({
+          contact_slugs: "contact-sample-001",
+        });
+        return { statusCode: 200, bodyText: JSON.stringify(sampleMarkContactAvailableResponse) };
+      }
+
+      if (request.url.pathname.endsWith("/companies/mark-as-available")) {
+        expect(request.method).toBe("POST");
+        expect(request.jsonBody).toEqual({
+          company_slugs: "company-sample-001",
+          mark_contact_available: false,
+          mark_candidate_available: true,
+        });
+        return { statusCode: 200, bodyText: JSON.stringify(sampleMarkCompanyAvailableResponse) };
+      }
+
+      throw new Error(`Unexpected request: ${request.url.pathname}`);
+    });
+    const client = new RecruitCrmClient(baseConfig, transport);
+
+    await expect(client.listOffLimitStatuses()).resolves.toEqual(sampleOffLimitStatusListResponse);
+    await expect(
+      client.markCandidateOffLimit({
+        candidate_slugs: ["candidate-sample-001", "candidate-sample-002"],
+        status_id: 7,
+        end_date: "29-06-2026",
+        reason: "Codex test",
+      }),
+    ).resolves.toEqual(sampleMarkCandidateOffLimitResponse);
+    await expect(
+      client.markContactOffLimit({
+        contact_slugs: ["contact-sample-001"],
+        status_id: 7,
+        end_date: "29-06-2026",
+        reason: "Codex test",
+      }),
+    ).resolves.toEqual(sampleMarkContactOffLimitResponse);
+    await expect(
+      client.markCompanyOffLimit({
+        company_slugs: ["company-sample-001"],
+        status_id: 7,
+        end_date: "29-06-2026",
+        reason: "Codex test",
+        mark_contact_off_limit: false,
+        mark_candidate_off_limit: true,
+      }),
+    ).resolves.toEqual(sampleMarkCompanyOffLimitResponse);
+    await expect(
+      client.markRecordsAvailable({
+        record_type: "candidate",
+        slugs: ["candidate-sample-001", "candidate-sample-002"],
+      }),
+    ).resolves.toEqual(sampleMarkCandidateAvailableResponse);
+    await expect(
+      client.markRecordsAvailable({
+        record_type: "contact",
+        slugs: ["contact-sample-001"],
+      }),
+    ).resolves.toEqual(sampleMarkContactAvailableResponse);
+    await expect(
+      client.markRecordsAvailable({
+        record_type: "company",
+        slugs: ["company-sample-001"],
+        mark_contact_available: false,
+        mark_candidate_available: true,
+      }),
+    ).resolves.toEqual(sampleMarkCompanyAvailableResponse);
+    expect(transport).toHaveBeenCalledTimes(7);
+  });
+
+  it("maps already-available markRecordsAvailable errors to a friendly message", async () => {
+    const transport = vi.fn(async (request: HttpRequestOptions): Promise<HttpResponse> => {
+      expect(request.url.pathname).toBe("/v1/companies/mark-as-available");
+      expect(request.method).toBe("POST");
+      expect(request.jsonBody).toEqual({
+        company_slugs: "company-sample-001",
+        mark_contact_available: false,
+        mark_candidate_available: false,
+      });
+
+      return {
+        statusCode: 422,
+        bodyText: JSON.stringify({
+          error: true,
+          errorCode: 422,
+          errorMessage: "At least one value must change!",
+        }),
+      };
+    });
+    const client = new RecruitCrmClient(baseConfig, transport);
+
+    await expect(
+      client.markRecordsAvailable({
+        record_type: "company",
+        slugs: ["company-sample-001"],
+        mark_contact_available: false,
+        mark_candidate_available: false,
+      }),
+    ).rejects.toMatchObject({
+      message:
+        "Recruit CRM did not mark the company record(s) available because they are already available or the requested availability settings would not change anything. No record was changed.",
+    });
   });
 
   it("ignores unused search field type changes", async () => {
@@ -152,12 +381,12 @@ describe("RecruitCrmClient", () => {
     });
     const client = new RecruitCrmClient(baseConfig, transport);
 
-    const result = await client.listCandidateHiringStages({ hiring_pipeline_id: 0 });
+    const result = await client.listCandidateHiringStages();
 
     expect(result).toEqual(sampleHiringPipelineResponse);
   });
 
-  it("fetches a job-specific hiring pipeline by id", async () => {
+  it("fetches hiring stages for a specific hiring pipeline id", async () => {
     const transport = vi.fn(async (request: HttpRequestOptions): Promise<HttpResponse> => {
       expect(request.url.pathname).toBe("/v1/hiring-pipelines/5067");
 
@@ -173,10 +402,82 @@ describe("RecruitCrmClient", () => {
     expect(result).toEqual(sampleHiringPipelineResponse);
   });
 
-  it("posts to the correct path and returns a mapped hiring stage update response", async () => {
+  it("calls pitch candidate endpoints and parses pitch payloads", async () => {
     const transport = vi.fn(async (request: HttpRequestOptions): Promise<HttpResponse> => {
-      expect(request.url.pathname).toBe("/v1/candidates/candidate-sample-001/hiring-stages/job-sample-001");
+      if (request.url.pathname.endsWith("/pitch-pipeline")) {
+        expect(request.method).toBe("GET");
+        return { statusCode: 200, bodyText: JSON.stringify(samplePitchPipelineResponse) };
+      }
+
+      if (request.url.pathname.endsWith("/pitch/candidate-pitch-sample-001/contact/contact-pitch-sample-001")) {
+        expect(request.method).toBe("POST");
+        expect(request.url.searchParams.get("created_by")).toBe("99069");
+        return { statusCode: 200, bodyText: JSON.stringify(samplePitchCandidateResponse) };
+      }
+
+      if (request.url.pathname.endsWith("/pitch/candidate-pitch-sample-001/updated-stage/contact-pitch-sample-001")) {
+        expect(request.method).toBe("POST");
+        expect(request.url.searchParams.get("updated_by")).toBe("99069");
+        expect(request.jsonBody).toEqual({
+          status_id: 483,
+          stage_date: "2026-06-03T08:30:00.000000Z",
+          remark: "Codex verification",
+        });
+        return { statusCode: 200, bodyText: JSON.stringify(sampleUpdateCandidatePitchStageResponse) };
+      }
+
+      if (request.url.pathname.endsWith("/pitch/pitch-candidate-history/candidate-pitch-sample-001")) {
+        expect(request.method).toBe("GET");
+        return { statusCode: 200, bodyText: JSON.stringify(samplePitchHistoryResponse) };
+      }
+
+      if (request.url.pathname.endsWith("/pitch/candidate/pitch-stage/candidate-pitch-sample-001")) {
+        expect(request.method).toBe("GET");
+        return { statusCode: 200, bodyText: JSON.stringify(samplePitchedRecordsResponse) };
+      }
+
+      throw new Error(`Unexpected request: ${request.url.toString()}`);
+    });
+    const client = new RecruitCrmClient(baseConfig, transport);
+
+    await expect(client.listPitchStages()).resolves.toEqual(samplePitchPipelineResponse);
+    await expect(
+      client.pitchCandidateToContact({
+        candidate_slug: "candidate-pitch-sample-001",
+        contact_slug: "contact-pitch-sample-001",
+        created_by: 99069,
+      }),
+    ).resolves.toEqual(samplePitchCandidateResponse);
+    await expect(
+      client.updateCandidatePitchStage({
+        candidate_slug: "candidate-pitch-sample-001",
+        contact_slug: "contact-pitch-sample-001",
+        status_id: 483,
+        stage_date: "2026-06-03T08:30:00.000000Z",
+        updated_by: 99069,
+        remark: "Codex verification",
+      }),
+    ).resolves.toEqual(sampleUpdateCandidatePitchStageResponse);
+    await expect(client.getPitchHistory("candidate", "candidate-pitch-sample-001")).resolves.toEqual(
+      samplePitchHistoryResponse,
+    );
+    await expect(client.getPitchedRecords("candidate", "candidate-pitch-sample-001")).resolves.toEqual(
+      samplePitchedRecordsResponse,
+    );
+    expect(transport).toHaveBeenCalledTimes(5);
+  });
+
+  it("updates a candidate hiring stage and parses the compact assignment payload", async () => {
+    const transport = vi.fn(async (request: HttpRequestOptions): Promise<HttpResponse> => {
       expect(request.method).toBe("POST");
+      expect(request.url.pathname).toBe("/v1/candidates/candidate-sample-001/hiring-stages/job-sample-001");
+      expect(request.jsonBody).toEqual({
+        status_id: 7006,
+        remark: "<p>Shortlisted because xyz</p>",
+        stage_date: "2020-03-25T16:14:28.000000Z",
+        updated_by: 453,
+        create_placement: false,
+      });
 
       return {
         statusCode: 200,
@@ -189,20 +490,19 @@ describe("RecruitCrmClient", () => {
       candidate_slug: "candidate-sample-001",
       job_slug: "job-sample-001",
       status_id: 7006,
-      stage_date: "2026-05-19T10:00:00Z",
-      updated_by: 42,
+      remark: "<p>Shortlisted because xyz</p>",
+      stage_date: "2020-03-25T16:14:28.000000Z",
+      updated_by: 453,
+      create_placement: false,
     });
 
-    expect(result).toMatchObject({
-      candidate_slug: "candidate-sample-001",
-      job_slug: "job-sample-001",
-    });
+    expect(result).toEqual(sampleCandidateHiringStageUpdateResponse);
   });
 
-  it("throws a 'did not confirm' error when updateCandidateHiringStage returns an empty body", async () => {
-    const transport = vi.fn(async (_request: HttpRequestOptions): Promise<HttpResponse> => ({
+  it("rejects empty candidate hiring stage update success payloads", async () => {
+    const transport = vi.fn(async (): Promise<HttpResponse> => ({
       statusCode: 200,
-      bodyText: "{}",
+      bodyText: JSON.stringify({}),
     }));
     const client = new RecruitCrmClient(baseConfig, transport);
 
@@ -211,18 +511,19 @@ describe("RecruitCrmClient", () => {
         candidate_slug: "candidate-sample-001",
         job_slug: "job-sample-001",
         status_id: 7006,
-        stage_date: "2026-05-19T10:00:00Z",
-        updated_by: 42,
+        stage_date: "2020-03-25T16:14:28.000000Z",
+        updated_by: 453,
       }),
-    ).rejects.toThrow("did not confirm the candidate hiring stage update");
+    ).rejects.toThrow(/did not confirm the candidate hiring stage update.*assignment may not exist.*updated_by.*stage may not be valid/);
   });
 
-  it("posts to the assign endpoint with query params and returns an assignment response", async () => {
+  it("assigns a candidate to a job and parses the compact assignment payload", async () => {
     const transport = vi.fn(async (request: HttpRequestOptions): Promise<HttpResponse> => {
-      expect(request.url.pathname).toBe("/v1/candidates/candidate-sample-001/assign");
       expect(request.method).toBe("POST");
-      expect(request.url.searchParams?.get("job_slug")).toBe("job-sample-001");
-      expect(request.url.searchParams?.get("updated_by")).toBe("42");
+      expect(request.url.pathname).toBe("/v1/candidates/candidate-sample-001/assign");
+      expect(request.url.searchParams.get("job_slug")).toBe("job-sample-001");
+      expect(request.url.searchParams.get("updated_by")).toBe("453");
+      expect(request.jsonBody).toBeUndefined();
 
       return {
         statusCode: 200,
@@ -234,19 +535,16 @@ describe("RecruitCrmClient", () => {
     const result = await client.assignCandidateToJob({
       candidate_slug: "candidate-sample-001",
       job_slug: "job-sample-001",
-      updated_by: 42,
+      updated_by: 453,
     });
 
-    expect(result).toMatchObject({
-      candidate_slug: "candidate-sample-001",
-      job_slug: "job-sample-001",
-    });
+    expect(result).toEqual(sampleCandidateJobAssignmentResponse);
   });
 
-  it("throws a 'did not confirm' error when assignCandidateToJob returns an empty body", async () => {
-    const transport = vi.fn(async (_request: HttpRequestOptions): Promise<HttpResponse> => ({
+  it("rejects empty candidate job assignment success payloads", async () => {
+    const transport = vi.fn(async (): Promise<HttpResponse> => ({
       statusCode: 200,
-      bodyText: "{}",
+      bodyText: JSON.stringify({}),
     }));
     const client = new RecruitCrmClient(baseConfig, transport);
 
@@ -254,27 +552,29 @@ describe("RecruitCrmClient", () => {
       client.assignCandidateToJob({
         candidate_slug: "candidate-sample-001",
         job_slug: "job-sample-001",
-        updated_by: 42,
+        updated_by: 453,
       }),
-    ).rejects.toThrow("did not confirm the candidate job assignment");
+    ).rejects.toThrow(/did not confirm the candidate job assignment.*candidate or job.*updated_by.*already be assigned/);
   });
 
-  it("maps a 404 with errorMessage about invalid updated_by to 'Invalid updater' error", async () => {
-    const transport = vi.fn(async (_request: HttpRequestOptions): Promise<HttpResponse> => ({
+  it("maps invalid assign updated_by errors without a candidate-not-found prefix", async () => {
+    const transport = vi.fn(async (): Promise<HttpResponse> => ({
       statusCode: 404,
-      bodyText: JSON.stringify({ errorMessage: "Updated By Id is not valid" }),
+      bodyText: JSON.stringify({
+        error: true,
+        errorCode: 404,
+        errorMessage: "Updated By Id is not valid",
+      }),
     }));
     const client = new RecruitCrmClient(baseConfig, transport);
 
     await expect(
-      client.updateCandidateHiringStage({
+      client.assignCandidateToJob({
         candidate_slug: "candidate-sample-001",
         job_slug: "job-sample-001",
-        status_id: 7006,
-        stage_date: "2026-05-19T10:00:00Z",
-        updated_by: 99999,
+        updated_by: 999999999,
       }),
-    ).rejects.toThrow(/Invalid updater/);
+    ).rejects.toThrow(/^Invalid updater\. Details: Updated By Id is not valid$/);
   });
 
   it("parses task search payloads while tolerating large nested related objects", async () => {
@@ -746,6 +1046,30 @@ describe("RecruitCrmClient", () => {
     });
   });
 
+  it("accepts collaborator_users as primitive ids in task search payloads", async () => {
+    const transport = vi.fn(async (_request: HttpRequestOptions): Promise<HttpResponse> => ({
+      statusCode: 200,
+      bodyText: JSON.stringify({
+        current_page: 1,
+        next_page_url: null,
+        data: [
+          {
+            ...sampleTaskSearchResponse.data[0],
+            collaborator_users: [99069],
+          },
+        ],
+      }),
+    }));
+    const client = new RecruitCrmClient(baseConfig, transport);
+
+    const result = await client.searchTasks({
+      created_from: "2026-01-01",
+      created_to: "2026-05-28",
+    });
+
+    expect(result.data[0]?.collaborator_users).toEqual([99069]);
+  });
+
   it("parses task type list payloads", async () => {
     const transport = vi.fn(async (request: HttpRequestOptions): Promise<HttpResponse> => {
       expect(request.url.pathname).toBe("/v1/task-types");
@@ -986,6 +1310,187 @@ describe("RecruitCrmClient", () => {
     });
   });
 
+  it("accepts related: 'Not Available' string in broad call log search without related_to", async () => {
+    const payload = {
+      current_page: 1,
+      next_page_url: null,
+      data: [
+        {
+          id: 9001,
+          call_type: "CALL_OUTGOING",
+          call_started_on: "2026-05-01T10:00:00.000000Z",
+          contact_number: null,
+          call_notes: null,
+          related_to: null,
+          related_to_type: null,
+          related: "Not Available",
+          duration: 5,
+          created_on: "2026-05-01T10:00:00.000000Z",
+          updated_on: "2026-05-01T10:00:00.000000Z",
+          created_by: 1,
+          updated_by: 1,
+        },
+      ],
+    };
+
+    const transport = vi.fn(async (_request: HttpRequestOptions): Promise<HttpResponse> => ({
+      statusCode: 200,
+      bodyText: JSON.stringify(payload),
+    }));
+    const client = new RecruitCrmClient(baseConfig, transport);
+
+    const result = await client.searchCallLogs({ starting_from: "2026-01-01", starting_to: "2026-12-31" });
+
+    expect(result.data).toHaveLength(1);
+    expect(result.data[0].id).toBe(9001);
+    expect(result.data[0].related).toBe("Not Available");
+  });
+
+  it("parses call type list payloads", async () => {
+    const transport = vi.fn(async (request: HttpRequestOptions): Promise<HttpResponse> => {
+      expect(request.url.pathname).toBe("/v1/custom-call-types");
+
+      return {
+        statusCode: 200,
+        bodyText: JSON.stringify(sampleCallLogTypeListResponse),
+      };
+    });
+    const client = new RecruitCrmClient(baseConfig, transport);
+
+    const result = await client.listCallTypes();
+
+    expect(result).toEqual(sampleCallLogTypeListResponse);
+  });
+
+  it("creates call logs with the correct POST body", async () => {
+    const transport = vi.fn(async (request: HttpRequestOptions): Promise<HttpResponse> => {
+      expect(request.url.pathname).toBe("/v1/call-logs");
+      expect(request.method).toBe("POST");
+      expect(request.jsonBody).toEqual({
+        call_type: "CALL_OUTGOING",
+        custom_call_type_id: 1,
+        call_started_on: "2026-05-20T10:00:00.000000Z",
+        related_to_type: "candidate",
+        created_by: 453,
+        updated_by: 453,
+        contact_number: "+1-555-0101",
+        call_notes: "Discussed requirements",
+        related_to: "candidate-related-sample-001",
+        associated_candidates: "candidate-related-sample-001,candidate-related-sample-002",
+        collaborator_user_ids: "34,99",
+      });
+
+      return {
+        statusCode: 200,
+        bodyText: JSON.stringify(sampleCreatedCallLogResponse),
+      };
+    });
+    const client = new RecruitCrmClient(baseConfig, transport);
+
+    const result = await client.createCallLog({
+      call_type: "CALL_OUTGOING",
+      custom_call_type_id: 1,
+      call_started_on: "2026-05-20T10:00:00.000000Z",
+      related_to_type: "candidate",
+      created_by: 453,
+      updated_by: 453,
+      contact_number: "+1-555-0101",
+      call_notes: "Discussed requirements",
+      related_to: "candidate-related-sample-001",
+      associated_candidates: ["candidate-related-sample-001", "candidate-related-sample-002"],
+      collaborator_user_ids: [34, 99],
+    });
+
+    expect(result).toEqual(sampleCreatedCallLogResponse);
+  });
+
+  it("updates activities with partial POST bodies", async () => {
+    const transport = vi.fn(async (request: HttpRequestOptions): Promise<HttpResponse> => {
+      if (request.url.pathname === "/v1/tasks/66753909") {
+        expect(request.method).toBe("POST");
+        expect(request.jsonBody).toEqual({
+          title: "Updated task title",
+          updated_by: 453,
+          collaborators: "34,99",
+        });
+
+        return { statusCode: 200, bodyText: JSON.stringify(sampleCreatedTaskResponse) };
+      }
+
+      if (request.url.pathname === "/v1/meetings/47202185") {
+        expect(request.method).toBe("POST");
+        expect(request.jsonBody).toEqual({
+          title: "Updated meeting title",
+          updated_by: 453,
+          attendee_users: "34,99",
+          do_not_send_calendar_invites: 1,
+        });
+
+        return { statusCode: 200, bodyText: JSON.stringify(sampleMeetingSearchResponse.data[0]) };
+      }
+
+      if (request.url.pathname === "/v1/notes/66752552") {
+        expect(request.method).toBe("POST");
+        expect(request.jsonBody).toEqual({
+          description: "<p>Updated note</p>",
+          updated_by: 453,
+          collaborator_user_ids: "34,99",
+        });
+
+        return { statusCode: 200, bodyText: JSON.stringify(sampleCreatedNoteResponse) };
+      }
+
+      if (request.url.pathname === "/v1/call-logs/498700") {
+        expect(request.method).toBe("POST");
+        expect(request.jsonBody).toEqual({
+          call_notes: "Updated call notes",
+          duration: "120",
+          updated_by: 453,
+        });
+
+        return { statusCode: 200, bodyText: JSON.stringify(sampleCreatedCallLogResponse) };
+      }
+
+      throw new Error(`Unexpected request: ${request.url.pathname}`);
+    });
+    const client = new RecruitCrmClient(baseConfig, transport);
+
+    await expect(
+      client.updateTask(66753909, {
+        task_id: 66753909,
+        title: "Updated task title",
+        updated_by: 453,
+        collaborator_user_ids: [34, 99],
+      }),
+    ).resolves.toEqual(sampleCreatedTaskResponse);
+    await expect(
+      client.updateMeeting(47202185, {
+        meeting_id: 47202185,
+        title: "Updated meeting title",
+        updated_by: 453,
+        attendee_users: [34, 99],
+        do_not_send_calendar_invites: true,
+      }),
+    ).resolves.toEqual(sampleMeetingSearchResponse.data[0]);
+    await expect(
+      client.updateNote(66752552, {
+        note_id: 66752552,
+        description: "<p>Updated note</p>",
+        updated_by: 453,
+        collaborator_user_ids: [34, 99],
+      }),
+    ).resolves.toEqual(sampleCreatedNoteResponse);
+    await expect(
+      client.updateCallLog(498700, {
+        call_log_id: 498700,
+        call_notes: "Updated call notes",
+        duration: "120",
+        updated_by: 453,
+      }),
+    ).resolves.toEqual(sampleCreatedCallLogResponse);
+    expect(transport).toHaveBeenCalledTimes(4);
+  });
+
   it("parses candidate job assignment hiring stage history payloads", async () => {
     const transport = vi.fn(async (_request: HttpRequestOptions): Promise<HttpResponse> => ({
       statusCode: 200,
@@ -1085,6 +1590,67 @@ describe("RecruitCrmClient", () => {
     ]);
   });
 
+  it("getCustomFields calls /v1/custom-fields and parses the response", async () => {
+    const transport = vi.fn(async (request: HttpRequestOptions): Promise<HttpResponse> => {
+      expect(request.url.pathname).toMatch(/\/custom-fields$/);
+      return {
+        statusCode: 200,
+        bodyText: JSON.stringify([
+          {
+            field_id: "10",
+            entity_type: "candidate",
+            field_type: "text",
+            field_name: "Notes",
+            default_value: "",
+          },
+          {
+            field_id: "20",
+            entity_type: "contact",
+            field_type: "dropdown",
+            field_name: "Tier",
+            default_value: "Gold,Silver,Bronze",
+          },
+        ]),
+      };
+    });
+    const client = new RecruitCrmClient(baseConfig, transport);
+
+    const result = await client.getCustomFields();
+
+    expect(result).toHaveLength(2);
+    expect(result[0]).toMatchObject({ field_id: 10, entity_type: "candidate", field_name: "Notes" });
+    expect(result[1]).toMatchObject({ field_id: 20, entity_type: "contact", field_name: "Tier" });
+  });
+
+  it("normalises empty-array dependency responses to an empty dependency list", async () => {
+    // The API returns [] (not {}) when a field has no dependencies — e.g. contacts field_id=12
+    const transport = vi.fn(async (request: HttpRequestOptions): Promise<HttpResponse> => {
+      expect(request.url.pathname).toBe("/v1/nested-custom-fields");
+      expect(["contacts", "deals"]).toContain(request.url.searchParams.get("entity_type"));
+      expect(["12", "2"]).toContain(request.url.searchParams.get("field_id"));
+
+      return {
+        statusCode: 200,
+        bodyText: JSON.stringify([]),
+      };
+    });
+    const client = new RecruitCrmClient(baseConfig, transport);
+
+    const contactResult = await client.getCustomFieldDependencies("contacts", 12);
+    const dealResult = await client.getCustomFieldDependencies("deals", 2);
+
+    expect(contactResult).toMatchObject({
+      entity_type: "contacts",
+      dependency_count: 0,
+      dependencies: [],
+    });
+    expect(dealResult).toMatchObject({
+      entity_type: "deals",
+      dependency_count: 0,
+      dependencies: [],
+    });
+  });
+
   it("parses direct candidate detail payloads", async () => {
     const transport = vi.fn(async (_request: HttpRequestOptions): Promise<HttpResponse> => ({
       statusCode: 200,
@@ -1159,6 +1725,25 @@ describe("RecruitCrmClient", () => {
       ]),
     );
     expect(result.resource_url).toBe("https://app.recruitcrm.io/job/job-detail-sample-001");
+  });
+
+  it("accepts null secondary_contact_slugs in job detail payloads", async () => {
+    const payload = {
+      ...sampleJobDetailResponse,
+      slug: "job-null-secondary-001",
+      secondary_contact_slugs: null,
+    };
+
+    const transport = vi.fn(async (_request: HttpRequestOptions): Promise<HttpResponse> => ({
+      statusCode: 200,
+      bodyText: JSON.stringify(payload),
+    }));
+    const client = new RecruitCrmClient(baseConfig, transport);
+
+    const result = await client.getJobDetails("job-null-secondary-001");
+
+    expect(result.slug).toBe("job-null-secondary-001");
+    expect(result.secondary_contact_slugs).toBeNull();
   });
 
   it("parses direct company detail payloads", async () => {
@@ -1790,7 +2375,7 @@ describe("executeCreateCandidate", () => {
     expect(transport).toHaveBeenCalledTimes(1);
   });
 
-  it("updates an existing duplicate candidate with the same tool when existing_candidate_slug is provided", async () => {
+  it("updates an existing candidate with update_candidate executor", async () => {
     const transport = vi.fn(async (request: HttpRequestOptions): Promise<HttpResponse> => {
       expect(request.url.pathname).toBe("/v1/candidates/candidate-duplicate-sample-001");
       expect(request.method).toBe("POST");
@@ -1800,6 +2385,7 @@ describe("executeCreateCandidate", () => {
         updated_by: 453,
       });
       expect(request.jsonBody).not.toHaveProperty("existing_candidate_slug");
+      expect(request.jsonBody).not.toHaveProperty("candidate_slug");
 
       return {
         statusCode: 200,
@@ -1813,12 +2399,12 @@ describe("executeCreateCandidate", () => {
     });
     const client = new RecruitCrmClient(baseConfig, transport);
 
-    const { executeCreateCandidate } = await import("../src/server.js");
-    const result = await executeCreateCandidate(client, {
+    const { executeUpdateCandidate } = await import("../src/server.js");
+    const result = await executeUpdateCandidate(client, {
+      candidate_slug: "candidate-duplicate-sample-001",
       first_name: "Existing",
       last_name: "Candidate",
       updated_by: 453,
-      existing_candidate_slug: "candidate-duplicate-sample-001",
     });
 
     expect(result).toMatchObject({
@@ -1834,6 +2420,82 @@ describe("executeCreateCandidate", () => {
       },
     });
     expect(transport).toHaveBeenCalledTimes(1);
+  });
+
+  it("passes base64 resume string to the API without URL normalization", async () => {
+    const base64Resume = "A".repeat(100); // >50 chars, all base64 chars
+
+    const transport = vi.fn(async (request: HttpRequestOptions): Promise<HttpResponse> => {
+      if (request.url.pathname.endsWith("/candidates/search")) {
+        return { statusCode: 200, bodyText: JSON.stringify([]) };
+      }
+      if (request.url.pathname.endsWith("/candidates")) {
+        expect(request.method).toBe("POST");
+        expect((request.jsonBody as Record<string, unknown>).resume).toBe(base64Resume);
+        return { statusCode: 200, bodyText: JSON.stringify(sampleCreatedCandidateResponse) };
+      }
+      throw new Error(`Unexpected request: ${request.url.toString()}`);
+    });
+    const client = new RecruitCrmClient(baseConfig, transport);
+
+    const { executeCreateCandidate } = await import("../src/server.js");
+    await executeCreateCandidate(client, {
+      first_name: "Base64",
+      last_name: "Resume",
+      owner_id: 453,
+      created_by: 453,
+      resume: base64Resume,
+    });
+  });
+
+  it("prepends https:// to a bare resume URL", async () => {
+    const transport = vi.fn(async (request: HttpRequestOptions): Promise<HttpResponse> => {
+      if (request.url.pathname.endsWith("/candidates/search")) {
+        return { statusCode: 200, bodyText: JSON.stringify([]) };
+      }
+      if (request.url.pathname.endsWith("/candidates")) {
+        expect((request.jsonBody as Record<string, unknown>).resume).toBe("https://example.com/resume.pdf");
+        return { statusCode: 200, bodyText: JSON.stringify(sampleCreatedCandidateResponse) };
+      }
+      throw new Error(`Unexpected request: ${request.url.toString()}`);
+    });
+    const client = new RecruitCrmClient(baseConfig, transport);
+
+    const { executeCreateCandidate } = await import("../src/server.js");
+    await executeCreateCandidate(client, {
+      first_name: "URL",
+      last_name: "Resume",
+      owner_id: 453,
+      created_by: 453,
+      resume: "example.com/resume.pdf",
+    });
+  });
+
+  it("passes a file-type custom field URL to the API unchanged", async () => {
+    const fileUrl = "https://example.com/formatted-cv.pdf";
+
+    const transport = vi.fn(async (request: HttpRequestOptions): Promise<HttpResponse> => {
+      if (request.url.pathname.endsWith("/candidates/search")) {
+        return { statusCode: 200, bodyText: JSON.stringify([]) };
+      }
+      if (request.url.pathname.endsWith("/candidates")) {
+        expect(request.jsonBody).toMatchObject({
+          custom_fields: [{ field_id: 1, value: fileUrl }],
+        });
+        return { statusCode: 200, bodyText: JSON.stringify(sampleCreatedCandidateResponse) };
+      }
+      throw new Error(`Unexpected request: ${request.url.toString()}`);
+    });
+    const client = new RecruitCrmClient(baseConfig, transport);
+
+    const { executeCreateCandidate } = await import("../src/server.js");
+    await executeCreateCandidate(client, {
+      first_name: "FileField",
+      last_name: "Test",
+      owner_id: 453,
+      created_by: 453,
+      custom_fields: [{ field_id: 1, value: fileUrl }],
+    });
   });
 });
 
@@ -2044,5 +2706,305 @@ describe("executeAddRecordsToHotlist", () => {
       ],
     });
     expect(transport).toHaveBeenCalledTimes(3);
+  });
+
+  it("includes custom_fields in the JSON body for buildSearchJobsRequest", () => {
+    const result = buildSearchJobsRequest({
+      name: "Director",
+      custom_fields: [
+        { field_id: 40, filter_type: "equals", filter_value: "Placed" },
+        { field_id: 14, filter_type: "not_available" },
+      ],
+    });
+
+    expect(result.query?.get("name")).toBe("Director");
+    expect(result.jsonBody).toEqual({
+      custom_fields: [
+        { field_id: 40, filter_type: "equals", filter_value: "Placed" },
+        { field_id: 14, filter_type: "not_available" },
+      ],
+    });
+  });
+
+  it("omits jsonBody from buildSearchJobsRequest when no custom_fields are provided", () => {
+    const result = buildSearchJobsRequest({ name: "Analyst" });
+
+    expect(result.query?.get("name")).toBe("Analyst");
+    expect(result.jsonBody).toBeUndefined();
+  });
+
+  it("includes custom_fields in the JSON body for buildSearchCompaniesRequest", () => {
+    const result = buildSearchCompaniesRequest({
+      company_name: "Acme",
+      custom_fields: [{ field_id: 2, filter_type: "yes" }],
+    });
+
+    expect(result.query?.get("company_name")).toBe("Acme");
+    expect(result.jsonBody).toEqual({
+      custom_fields: [{ field_id: 2, filter_type: "yes" }],
+    });
+  });
+
+  it("omits jsonBody from buildSearchCompaniesRequest when no custom_fields are provided", () => {
+    const result = buildSearchCompaniesRequest({ company_name: "Acme" });
+
+    expect(result.query?.get("company_name")).toBe("Acme");
+    expect(result.jsonBody).toBeUndefined();
+  });
+
+  it("includes custom_fields in the JSON body for buildSearchContactsRequest", () => {
+    const result = buildSearchContactsRequest({
+      first_name: "Jane",
+      custom_fields: [{ field_id: 12, filter_type: "equals", filter_value: "Auto" }],
+    });
+
+    expect(result.query?.get("first_name")).toBe("Jane");
+    expect(result.jsonBody).toEqual({
+      custom_fields: [{ field_id: 12, filter_type: "equals", filter_value: "Auto" }],
+    });
+  });
+
+  it("omits jsonBody from buildSearchContactsRequest when no custom_fields are provided", () => {
+    const result = buildSearchContactsRequest({ first_name: "Jane" });
+
+    expect(result.query?.get("first_name")).toBe("Jane");
+    expect(result.jsonBody).toBeUndefined();
+  });
+
+  it("sets limit and page in query for buildSearchCandidatesRequest", () => {
+    const result = buildSearchCandidatesRequest({ first_name: "Alice", limit: 10, page: 3 });
+
+    expect(result.query?.get("first_name")).toBe("Alice");
+    expect(result.query?.get("limit")).toBe("10");
+    expect(result.query?.get("page")).toBe("3");
+  });
+
+  it("defaults limit to 100 and page to 1 for buildSearchCandidatesRequest when not provided", () => {
+    const result = buildSearchCandidatesRequest({ first_name: "Alice" });
+
+    expect(result.query?.get("limit")).toBe("100");
+    expect(result.query?.get("page")).toBe("1");
+  });
+
+  it("passes limit and page in query for buildSearchCompaniesRequest", () => {
+    const result = buildSearchCompaniesRequest({ company_name: "Acme", limit: 5, page: 2 });
+
+    expect(result.query?.get("limit")).toBe("5");
+    expect(result.query?.get("page")).toBe("2");
+  });
+
+  it("defaults limit to 100 and page to 1 for buildSearchCompaniesRequest when not provided", () => {
+    const result = buildSearchCompaniesRequest({ company_name: "Acme" });
+
+    expect(result.query?.get("limit")).toBe("100");
+    expect(result.query?.get("page")).toBe("1");
+  });
+
+  it("passes limit and page in query for buildSearchContactsRequest", () => {
+    const result = buildSearchContactsRequest({ first_name: "Jane", limit: 7, page: 4 });
+
+    expect(result.query?.get("limit")).toBe("7");
+    expect(result.query?.get("page")).toBe("4");
+  });
+
+  it("defaults limit to 100 and page to 1 for buildSearchContactsRequest when not provided", () => {
+    const result = buildSearchContactsRequest({ first_name: "Jane" });
+
+    expect(result.query?.get("limit")).toBe("100");
+    expect(result.query?.get("page")).toBe("1");
+  });
+});
+
+describe("executeCreateContact", () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it("checks duplicates then creates the contact when no duplicates exist", async () => {
+    const seenPaths: string[] = [];
+    const transport = vi.fn(async (request: HttpRequestOptions): Promise<HttpResponse> => {
+      seenPaths.push(request.url.pathname);
+
+      if (request.url.pathname.endsWith("/contacts/search")) {
+        expect(request.url.searchParams.get("email")).toBe("create.contact@example.com");
+        expect(request.url.searchParams.get("exact_search")).toBe("true");
+        return {
+          statusCode: 200,
+          bodyText: JSON.stringify({ current_page: 1, next_page_url: null, data: [] }),
+        };
+      }
+
+      if (request.url.pathname.endsWith("/contacts")) {
+        expect(request.method).toBe("POST");
+        expect(request.jsonBody).toMatchObject({
+          first_name: "Jane",
+          last_name: "Smith",
+          email: "create.contact@example.com",
+          owner_id: 453,
+          created_by: 453,
+        });
+        expect(request.jsonBody).not.toHaveProperty("allow_duplicate");
+        expect(request.jsonBody).not.toHaveProperty("contact_slug");
+
+        return {
+          statusCode: 200,
+          bodyText: JSON.stringify(sampleCreatedContactResponse),
+        };
+      }
+
+      throw new Error(`Unexpected request: ${request.url.toString()}`);
+    });
+    const client = new RecruitCrmClient(baseConfig, transport);
+
+    const { executeCreateContact } = await import("../src/server.js");
+    const result = await executeCreateContact(client, {
+      first_name: "Jane",
+      last_name: "Smith",
+      email: "create.contact@example.com",
+      owner_id: 453,
+      created_by: 453,
+    });
+
+    expect(seenPaths).toEqual(["/v1/contacts/search", "/v1/contacts"]);
+    expect(result).toMatchObject({
+      action: "created",
+      contact_slug: "contact-created-sample-001",
+      contact_id: 20591,
+      view_url: "https://app.recruitcrm.io/contact/contact-created-sample-001",
+    });
+  });
+
+  it("blocks contact creation when duplicate search finds a match", async () => {
+    const transport = vi.fn(async (request: HttpRequestOptions): Promise<HttpResponse> => {
+      expect(request.url.pathname).toBe("/v1/contacts/search");
+      return {
+        statusCode: 200,
+        bodyText: JSON.stringify({
+          current_page: 1,
+          next_page_url: null,
+          data: [
+            {
+              slug: "contact-duplicate-sample-001",
+              first_name: "Existing",
+              last_name: "Contact",
+              id: 99999,
+            },
+          ],
+        }),
+      };
+    });
+    const client = new RecruitCrmClient(baseConfig, transport);
+
+    const { executeCreateContact } = await import("../src/server.js");
+    await expect(
+      executeCreateContact(client, {
+        first_name: "Jane",
+        last_name: "Smith",
+        email: "duplicate.contact@example.com",
+        owner_id: 453,
+        created_by: 453,
+      }),
+    ).rejects.toThrow(/Potential duplicate contact found/);
+    expect(transport).toHaveBeenCalledTimes(1);
+  });
+
+  it("blocks contact creation when duplicate search finds a match on linkedin", async () => {
+    const transport = vi.fn(async (request: HttpRequestOptions): Promise<HttpResponse> => {
+      expect(request.url.pathname).toBe("/v1/contacts/search");
+      expect(request.url.searchParams.get("linkedin")).toBe("https://linkedin.com/in/existing-contact");
+      return {
+        statusCode: 200,
+        bodyText: JSON.stringify({
+          current_page: 1,
+          next_page_url: null,
+          data: [
+            {
+              slug: "contact-duplicate-linkedin-001",
+              first_name: "Existing",
+              last_name: "Contact",
+              id: 88888,
+            },
+          ],
+        }),
+      };
+    });
+    const client = new RecruitCrmClient(baseConfig, transport);
+
+    const { executeCreateContact } = await import("../src/server.js");
+    await expect(
+      executeCreateContact(client, {
+        first_name: "Jane",
+        last_name: "Smith",
+        linkedin: "https://linkedin.com/in/existing-contact",
+        owner_id: 453,
+        created_by: 453,
+      }),
+    ).rejects.toThrow(/Potential duplicate contact found/);
+    expect(transport).toHaveBeenCalledTimes(1);
+  });
+
+  it("blocks contact creation when duplicate search finds a match on contact number", async () => {
+    const transport = vi.fn(async (request: HttpRequestOptions): Promise<HttpResponse> => {
+      expect(request.url.pathname).toBe("/v1/contacts/search");
+      expect(request.url.searchParams.get("contact_number")).toBe("+1-555-0120");
+      return {
+        statusCode: 200,
+        bodyText: JSON.stringify({
+          current_page: 1,
+          next_page_url: null,
+          data: [
+            {
+              slug: "contact-duplicate-phone-001",
+              first_name: "Existing",
+              last_name: "Contact",
+              id: 77777,
+            },
+          ],
+        }),
+      };
+    });
+    const client = new RecruitCrmClient(baseConfig, transport);
+
+    const { executeCreateContact } = await import("../src/server.js");
+    await expect(
+      executeCreateContact(client, {
+        first_name: "Jane",
+        last_name: "Smith",
+        contact_number: "+1-555-0120",
+        owner_id: 453,
+        created_by: 453,
+      }),
+    ).rejects.toThrow(/Potential duplicate contact found/);
+    expect(transport).toHaveBeenCalledTimes(1);
+  });
+
+  it("skips duplicate check and creates when allow_duplicate is true", async () => {
+    const transport = vi.fn(async (request: HttpRequestOptions): Promise<HttpResponse> => {
+      expect(request.url.pathname).toBe("/v1/contacts");
+      expect(request.method).toBe("POST");
+      expect(request.jsonBody).not.toHaveProperty("allow_duplicate");
+
+      return {
+        statusCode: 200,
+        bodyText: JSON.stringify(sampleCreatedContactResponse),
+      };
+    });
+    const client = new RecruitCrmClient(baseConfig, transport);
+
+    const { executeCreateContact } = await import("../src/server.js");
+    const result = await executeCreateContact(client, {
+      first_name: "Jane",
+      last_name: "Smith",
+      email: "create.contact@example.com",
+      owner_id: 453,
+      created_by: 453,
+      allow_duplicate: true,
+    });
+
+    expect(transport).toHaveBeenCalledTimes(1);
+    expect(result).toMatchObject({
+      action: "created",
+      contact_slug: "contact-created-sample-001",
+    });
   });
 });

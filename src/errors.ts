@@ -116,9 +116,9 @@ function extractApiMessage(bodyText: string | undefined): string | undefined {
       const obj = parsed as Record<string, unknown>;
       const message =
         (typeof obj.message === "string" && obj.message) ||
-        (typeof obj.errorMessage === "string" && obj.errorMessage) ||
         (typeof obj.error === "string" && obj.error) ||
         (typeof obj.detail === "string" && obj.detail) ||
+        (typeof obj.errorMessage === "string" && obj.errorMessage) ||
         undefined;
 
       if (message) {
@@ -127,6 +127,7 @@ function extractApiMessage(bodyText: string | undefined): string | undefined {
 
       if (obj.errors && typeof obj.errors === "object") {
         const parts = formatApiFieldErrors(obj.errors as Record<string, unknown>);
+
         if (parts) {
           return truncate(parts);
         }
@@ -146,10 +147,25 @@ function extractApiMessage(bodyText: string | undefined): string | undefined {
   return truncate(trimmed);
 }
 
+function truncate(value: string, max = 500): string {
+  if (value.length <= max) {
+    return value;
+  }
+  return `${value.slice(0, max)}…`;
+}
+
+export function formatIssuePath(path: PropertyKey[]): string {
+  if (path.length === 0) {
+    return "<root>";
+  }
+  return path.map((segment) => String(segment)).join(".");
+}
+
 function isInvalidUpdaterMessage(message: string | undefined): boolean {
   if (!message) {
     return false;
   }
+
   return /updated[\s_-]*by/i.test(message) && /\b(invalid|not valid|not found|doesn'?t exist)\b/i.test(message);
 }
 
@@ -179,19 +195,6 @@ function formatApiFieldErrorValue(value: unknown): string {
   if (typeof value === "string") {
     return value;
   }
+
   return JSON.stringify(value) ?? String(value);
-}
-
-function truncate(value: string, max = 500): string {
-  if (value.length <= max) {
-    return value;
-  }
-  return `${value.slice(0, max)}…`;
-}
-
-function formatIssuePath(path: PropertyKey[]): string {
-  if (path.length === 0) {
-    return "<root>";
-  }
-  return path.map((segment) => String(segment)).join(".");
 }

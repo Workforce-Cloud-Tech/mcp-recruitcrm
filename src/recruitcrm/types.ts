@@ -21,6 +21,7 @@ export type SearchCandidateCustomFieldFilter = {
 
 export type SearchCandidatesInput = {
   page?: number;
+  limit?: number;
   created_from?: string;
   created_to?: string;
   email?: string;
@@ -131,8 +132,12 @@ export type CreateCandidateInput = {
   candidate_summary?: string;
   work_history?: CreateCandidateWorkHistoryInput[];
   education_history?: CreateCandidateEducationHistoryInput[];
-  existing_candidate_slug?: string;
   allow_duplicate?: boolean;
+};
+
+export type UpdateCandidateInput = Omit<CreateCandidateInput, "allow_duplicate"> & {
+  candidate_slug: string;
+  updated_by: number;
 };
 
 export type ListJobsInput = {
@@ -142,6 +147,247 @@ export type ListJobsInput = {
   sort_order?: "asc" | "desc";
 };
 
+export type MetadataListInput = {
+  page?: number;
+  limit?: number;
+};
+
+export type ListTeamsInput = MetadataListInput & {
+  expand?: "user";
+  include_user_contact_info?: boolean;
+};
+
+export type RecruitCrmTeamUser = {
+  id?: number | string | null;
+  first_name?: string | number | null;
+  last_name?: string | number | null;
+  email?: string | number | null;
+  contact_number?: string | number | null;
+  avatar?: string | number | null;
+  [key: string]: unknown;
+};
+
+export type RecruitCrmTeam = {
+  team_id?: number | string | null;
+  team_name?: string | number | null;
+  users?: Array<number | string | RecruitCrmTeamUser | null> | null;
+  [key: string]: unknown;
+};
+
+export type TeamUserSummary = {
+  id: number | null;
+  first_name: string | null;
+  last_name: string | null;
+  email?: string | null;
+  contact_number?: string | null;
+  avatar?: string | null;
+};
+
+export type TeamSummary = {
+  team_id: number | null;
+  team_name: string | null;
+  users: Array<number | TeamUserSummary>;
+};
+
+export type ListTeamsResult = {
+  page: number;
+  returned_count: number;
+  total_count: number;
+  has_more: boolean;
+  teams: TeamSummary[];
+};
+
+export type RecruitCrmCandidateQuestion = {
+  id?: number | string | null;
+  question?: string | number | null;
+  [key: string]: unknown;
+};
+
+export type CandidateQuestionSummary = {
+  id: number | null;
+  question: string | null;
+};
+
+export type ListCandidateQuestionsResult = {
+  page: number;
+  returned_count: number;
+  total_count: number;
+  has_more: boolean;
+  candidate_questions: CandidateQuestionSummary[];
+};
+
+export type RecruitCrmHiringPipelineSummary = {
+  id?: number | string | null;
+  name?: string | number | null;
+  [key: string]: unknown;
+};
+
+export type HiringPipelineSummary = {
+  hiring_pipeline_id: number | null;
+  name: string | null;
+};
+
+export type ListHiringPipelinesResult = {
+  page: number;
+  returned_count: number;
+  total_count: number;
+  has_more: boolean;
+  hiring_pipelines: HiringPipelineSummary[];
+};
+
+export type RecruitCrmLanguage = {
+  language_id?: number | string | null;
+  code?: string | number | null;
+  language_name?: string | number | null;
+  [key: string]: unknown;
+};
+
+export type LanguageSummary = {
+  language_id: number | null;
+  code: string | null;
+  language_name: string | null;
+};
+
+export type LanguageProficiencySummary = {
+  proficiency_id: number;
+  label: string;
+};
+
+export type ListLanguagesAndProficienciesResult = {
+  page: number;
+  returned_count: number;
+  total_count: number;
+  has_more: boolean;
+  languages: LanguageSummary[];
+  proficiencies: LanguageProficiencySummary[];
+};
+
+export type RecruitCrmCurrency = {
+  currency_id?: number | string | null;
+  code?: string | number | null;
+  country?: string | number | null;
+  currency?: string | number | null;
+  symbol?: string | number | null;
+  [key: string]: unknown;
+};
+
+export type CurrencySummary = {
+  currency_id: number | null;
+  code: string | null;
+  country: string | null;
+  currency: string | null;
+  symbol: string | null;
+};
+
+export type ListCurrenciesResult = {
+  page: number;
+  returned_count: number;
+  total_count: number;
+  has_more: boolean;
+  currencies: CurrencySummary[];
+};
+
+export type RecruitCrmQualification = {
+  qualification_id?: number | string | null;
+  label?: string | number | null;
+  [key: string]: unknown;
+};
+
+export type QualificationSummary = {
+  qualification_id: number | null;
+  label: string | null;
+};
+
+export type ListQualificationsResult = {
+  page: number;
+  returned_count: number;
+  total_count: number;
+  has_more: boolean;
+  qualifications: QualificationSummary[];
+};
+
+export type RecruitCrmXmlJobboard = {
+  id?: number | string | null;
+  label?: string | number | null;
+  [key: string]: unknown;
+};
+
+export type RecruitCrmXmlJobboardsResponse = {
+  default_xml_feeds?: RecruitCrmXmlJobboard[];
+  custom_xml_feeds?: RecruitCrmXmlJobboard[];
+  [key: string]: unknown;
+};
+
+export type XmlJobboardSummary = {
+  id: number | null;
+  label: string | null;
+};
+
+export type ListXmlJobboardsResult = {
+  default_xml_feeds: XmlJobboardSummary[];
+  custom_xml_feeds: XmlJobboardSummary[];
+};
+
+export type CreateJobCustomFieldInput = {
+  field_id: number;
+  value: string;
+};
+
+export type CreateJobXmlFeedsInput = {
+  default?: string;
+  custom?: string;
+};
+
+export type CreateJobInput = {
+  name: string;
+  job_status?: number;
+  number_of_openings?: number;
+  company_slug: string;
+  contact_slug: string;
+  secondary_contact_slugs?: string[];
+  job_description_text?: string;
+  job_description_file?: string;
+  minimum_experience?: number;
+  maximum_experience?: number;
+  salary_type?: 1 | 2 | 3 | 4 | 5;
+  currency_id?: number;
+  min_annual_salary?: number;
+  max_annual_salary?: number;
+  pay_rate?: number;
+  bill_rate?: number;
+  qualification_id?: number;
+  specialization?: string;
+  job_skill?: string;
+  job_type?: 1 | 2 | 3 | 4;
+  job_category?: string;
+  city?: string;
+  locality?: string;
+  state?: string;
+  country?: string;
+  address?: string;
+  postal_code?: string;
+  job_location_type?: 0 | 1 | 2;
+  collaborator_user_ids?: number[];
+  collaborator_team_ids?: number[];
+  enable_auto_populate_teams?: boolean;
+  show_company_logo?: 0 | 1 | 2;
+  job_questions?: string;
+  note_for_candidates?: string;
+  enable_job_application_form: 0 | 1;
+  hiring_pipeline_id?: number;
+  xml_feeds?: CreateJobXmlFeedsInput;
+  targetcompanies?: string[];
+  owner_id: number;
+  created_by: number;
+  updated_by?: number;
+  custom_fields?: CreateJobCustomFieldInput[];
+};
+
+export type UpdateJobInput = Partial<CreateJobInput> & {
+  job_slug: string;
+  updated_by: number;
+};
+
 export type ListCompaniesInput = {
   limit?: number;
   page?: number;
@@ -149,8 +395,58 @@ export type ListCompaniesInput = {
   sort_order?: "asc" | "desc";
 };
 
+export type CreateCompanyCustomFieldInput = {
+  field_id: number;
+  value: string;
+};
+
+export type CreateCompanyInput = {
+  company_name: string;
+  about_company?: string;
+  city?: string;
+  locality?: string;
+  state?: string;
+  country?: string;
+  postal_code?: string;
+  address?: string;
+  industry_id?: number;
+  logo?: string;
+  website?: string;
+  facebook?: string;
+  twitter?: string;
+  linkedin?: string;
+  owner_id: number;
+  created_by: number;
+  updated_by?: number;
+  custom_fields?: CreateCompanyCustomFieldInput[];
+  allow_duplicate?: boolean;
+};
+
+export type UpdateCompanyInput = {
+  company_slug: string;
+  company_name?: string;
+  about_company?: string;
+  city?: string;
+  locality?: string;
+  state?: string;
+  country?: string;
+  postal_code?: string;
+  address?: string;
+  industry_id?: number;
+  logo?: string;
+  website?: string;
+  facebook?: string;
+  twitter?: string;
+  linkedin?: string;
+  owner_id?: number;
+  created_by?: number;
+  updated_by: number;
+  custom_fields?: CreateCompanyCustomFieldInput[];
+};
+
 export type SearchContactsInput = {
   page?: number;
+  limit?: number;
   created_from?: string;
   created_to?: string;
   email?: string;
@@ -170,6 +466,7 @@ export type SearchContactsInput = {
   sort_by?: "createdon" | "updatedon";
   sort_order?: "asc" | "desc";
   include_contact_info?: boolean;
+  custom_fields?: SearchCandidateCustomFieldFilter[];
 };
 
 export type ListContactsInput = {
@@ -178,6 +475,231 @@ export type ListContactsInput = {
   sort_by?: "createdon" | "updatedon";
   sort_order?: "asc" | "desc";
   include_contact_info?: boolean;
+};
+
+export type CreateContactCustomFieldInput = {
+  field_id: number;
+  value: string;
+};
+
+export type CreateContactInput = {
+  first_name: string;
+  last_name: string;
+  email?: string;
+  contact_number?: string;
+  company_slug?: string;
+  avatar?: string;
+  city?: string;
+  locality?: string;
+  state?: string;
+  country?: string;
+  postal_code?: string;
+  address?: string;
+  designation?: string;
+  facebook?: string;
+  twitter?: string;
+  linkedin?: string;
+  stage_id?: number;
+  owner_id: number;
+  created_by: number;
+  updated_by?: number;
+  custom_fields?: CreateContactCustomFieldInput[];
+  allow_duplicate?: boolean;
+};
+
+export type UpdateContactInput = {
+  contact_slug: string;
+  first_name?: string;
+  last_name?: string;
+  email?: string;
+  contact_number?: string;
+  company_slug?: string;
+  avatar?: string;
+  city?: string;
+  locality?: string;
+  state?: string;
+  country?: string;
+  postal_code?: string;
+  address?: string;
+  designation?: string;
+  facebook?: string;
+  twitter?: string;
+  linkedin?: string;
+  stage_id?: number;
+  owner_id?: number;
+  created_by?: number;
+  updated_by?: number;
+  custom_fields?: CreateContactCustomFieldInput[];
+};
+
+export type MarkCandidateOffLimitInput = {
+  candidate_slugs: string[];
+  status_id: number;
+  end_date: string;
+  reason?: string;
+};
+
+export type MarkContactOffLimitInput = {
+  contact_slugs: string[];
+  status_id: number;
+  end_date: string;
+  reason?: string;
+};
+
+export type MarkCompanyOffLimitInput = {
+  company_slugs: string[];
+  status_id: number;
+  end_date: string;
+  reason?: string;
+  mark_contact_off_limit: boolean;
+  mark_candidate_off_limit: boolean;
+};
+
+export type MarkRecordsAvailableRecordType = "candidate" | "contact" | "company";
+
+export type MarkRecordsAvailableInput = {
+  record_type: MarkRecordsAvailableRecordType;
+  slugs: string[];
+  mark_contact_available?: boolean;
+  mark_candidate_available?: boolean;
+};
+
+export type CreatedContact = RecruitCrmContact;
+
+export type CreatedCompany = RecruitCrmCompany;
+
+export type CreateCompanyResult = {
+  action: "created" | "updated";
+  company_slug: string;
+  company_id: number | null;
+  company_name: string | null;
+  website: string | null;
+  owner: number | null;
+  created_on: string | null;
+  updated_on: string | null;
+  view_url: string | null;
+};
+
+export type CreateContactResult = {
+  action: "created" | "updated";
+  contact_slug: string;
+  contact_id: number | null;
+  first_name: string | null;
+  last_name: string | null;
+  designation: string | null;
+  company_slug: string | null;
+  owner: number | null;
+  created_on: string | null;
+  updated_on: string | null;
+  view_url: string | null;
+};
+
+export type RecruitCrmContactStagePipelineItem = {
+  stage_id?: number | string | null;
+  label?: string | number | null;
+  [key: string]: unknown;
+};
+
+export type RecruitCrmContactStagePipelineResponse = RecruitCrmContactStagePipelineItem[];
+
+export type ContactStageSummary = {
+  stage_id: number | null;
+  label: string | null;
+};
+
+export type ListContactStagesResult = {
+  returned_count: number;
+  stages: ContactStageSummary[];
+};
+
+export type RecruitCrmOffLimitStatus = {
+  id?: number | string | null;
+  status_label?: string | number | null;
+  sequence_no?: number | string | null;
+  default?: number | string | boolean | null;
+  [key: string]: unknown;
+};
+
+export type RecruitCrmOffLimitStatusListResponse = RecruitCrmOffLimitStatus[];
+
+export type OffLimitStatusSummary = {
+  id: number | null;
+  label: string | null;
+  sequence_no: number | null;
+  default: boolean | null;
+};
+
+export type ListOffLimitStatusesResult = {
+  returned_count: number;
+  statuses: OffLimitStatusSummary[];
+};
+
+export type RecruitCrmOffLimitSlugListValue = string | number | Array<string | number | null> | null;
+
+export type RecruitCrmMarkOffLimitResponseBase = {
+  status_id?: number | string | null;
+  end_date?: string | number | null;
+  reason?: string | number | null;
+  remark?: string | number | null;
+  [key: string]: unknown;
+};
+
+export type RecruitCrmMarkCandidateOffLimitResponse = RecruitCrmMarkOffLimitResponseBase & {
+  candidate_slugs?: RecruitCrmOffLimitSlugListValue;
+};
+
+export type RecruitCrmMarkContactOffLimitResponse = RecruitCrmMarkOffLimitResponseBase & {
+  contact_slugs?: RecruitCrmOffLimitSlugListValue;
+};
+
+export type RecruitCrmMarkCompanyOffLimitResponse = RecruitCrmMarkOffLimitResponseBase & {
+  company_slugs?: RecruitCrmOffLimitSlugListValue;
+};
+
+export type RecruitCrmMarkRecordsAvailableResponse = {
+  candidate_slugs?: RecruitCrmOffLimitSlugListValue;
+  contact_slugs?: RecruitCrmOffLimitSlugListValue;
+  company_slugs?: RecruitCrmOffLimitSlugListValue;
+  mark_contact_available?: number | string | boolean | null;
+  mark_candidate_available?: number | string | boolean | null;
+  remark?: string | number | null;
+  [key: string]: unknown;
+};
+
+export type MarkCandidateOffLimitResult = {
+  candidate_slugs: string[];
+  requested_count: number;
+  status_id: number | null;
+  end_date: string | null;
+  reason: string | null;
+  remark: string | null;
+};
+
+export type MarkContactOffLimitResult = {
+  contact_slugs: string[];
+  requested_count: number;
+  status_id: number | null;
+  end_date: string | null;
+  reason: string | null;
+  remark: string | null;
+};
+
+export type MarkCompanyOffLimitResult = {
+  company_slugs: string[];
+  requested_count: number;
+  status_id: number | null;
+  end_date: string | null;
+  reason: string | null;
+  remark: string | null;
+};
+
+export type MarkRecordsAvailableResult = {
+  record_type: MarkRecordsAvailableRecordType;
+  slugs: string[];
+  requested_count: number;
+  mark_contact_available: boolean | null;
+  mark_candidate_available: boolean | null;
+  remark: string | null;
 };
 
 export type ListUsersInput = {
@@ -239,6 +761,11 @@ export type CreateTaskInput = {
   enable_auto_populate_teams?: boolean;
 };
 
+export type UpdateTaskInput = Partial<Omit<CreateTaskInput, "created_by">> & {
+  task_id: number;
+  updated_by: number;
+};
+
 export type SearchMeetingsInput = {
   page?: number;
   created_from?: string;
@@ -285,6 +812,11 @@ export type CreateMeetingInput = {
   collaborator_team_ids?: number[];
 };
 
+export type UpdateMeetingInput = Partial<Omit<CreateMeetingInput, "created_by">> & {
+  meeting_id: number;
+  updated_by: number;
+};
+
 export type SearchNotesInput = {
   page?: number;
   added_from?: string;
@@ -314,6 +846,11 @@ export type CreateNoteInput = {
   enable_auto_populate_teams?: boolean;
 };
 
+export type UpdateNoteInput = Partial<Omit<CreateNoteInput, "created_by">> & {
+  note_id: number;
+  updated_by: number;
+};
+
 export type SearchCallLogsInput = {
   page?: number;
   call_type?: "CALL_OUTGOING" | "CALL_INCOMING";
@@ -323,26 +860,6 @@ export type SearchCallLogsInput = {
   starting_to?: string;
   updated_from?: string;
   updated_to?: string;
-};
-
-export type ListCandidateHiringStagesInput = {
-  hiring_pipeline_id?: number;
-};
-
-export type UpdateCandidateHiringStageInput = {
-  candidate_slug: string;
-  job_slug: string;
-  status_id: number;
-  remark?: string;
-  stage_date: string;
-  updated_by: number;
-  create_placement?: boolean;
-};
-
-export type AssignCandidateToJobInput = {
-  candidate_slug: string;
-  job_slug: string;
-  updated_by: number;
 };
 
 export type SearchJobsInput = {
@@ -380,10 +897,12 @@ export type SearchJobsInput = {
   sort_order?: "asc" | "desc";
   updated_from?: string;
   updated_to?: string;
+  custom_fields?: SearchCandidateCustomFieldFilter[];
 };
 
 export type SearchCompaniesInput = {
   page?: number;
+  limit?: number;
   company_name?: string;
   created_from?: string;
   created_to?: string;
@@ -397,6 +916,7 @@ export type SearchCompaniesInput = {
   exact_search?: boolean;
   sort_by?: "createdon" | "updatedon";
   sort_order?: "asc" | "desc";
+  custom_fields?: SearchCandidateCustomFieldFilter[];
 };
 
 export type GetJobAssignedCandidatesInput = {
@@ -488,20 +1008,129 @@ export type RecruitCrmHiringStage = {
 
 export type RecruitCrmHiringPipelineResponse = RecruitCrmHiringStage[];
 
-export type RecruitCrmCandidateHiringStageUpdateResponse = {
-  job_slug?: string | number | null;
+export type RecruitCrmPitchStage = {
+  status_id?: number | string | null;
+  label?: string | number | null;
+  [key: string]: unknown;
+};
+
+export type RecruitCrmPitchPipelineResponse = RecruitCrmPitchStage[];
+
+export type PitchEntityType = "candidate" | "contact";
+
+export type PitchCandidateToContactInput = {
+  candidate_slug: string;
+  contact_slug: string;
+  created_by: number;
+  allow_duplicate?: boolean;
+};
+
+export type UpdateCandidatePitchStageInput = {
+  candidate_slug: string;
+  contact_slug: string;
+  status_id: number;
+  stage_date: string;
+  updated_by: number;
+  remark?: string;
+};
+
+export type RecruitCrmPitchRecord = {
   candidate_slug?: string | number | null;
-  status?: RecruitCrmAssignedCandidateStatus | null;
+  contact_slug?: string | number | null;
+  status_id?: number | string | null;
+  status_label?: string | number | null;
+  candidate_status?: string | number | null;
   remark?: string | number | null;
   stage_date?: string | number | null;
-  visibility?: number | string | boolean | null;
-  shared_list_url?: string | number | null;
+  contact_title?: string | number | null;
+  contact_name?: string | number | null;
+  candidate_name?: string | number | null;
+  candidate_position?: string | number | null;
+  created_on?: string | number | null;
+  created_by?: number | string | null;
   updated_on?: string | number | null;
   updated_by?: number | string | null;
   [key: string]: unknown;
 };
 
-export type RecruitCrmCandidateJobAssignmentResponse = RecruitCrmCandidateHiringStageUpdateResponse;
+export type RecruitCrmPitchActionResponse = {
+  success?: boolean | string | number | null;
+  successCode?: number | string | null;
+  statusCode?: number | string | null;
+  message?: string | number | null;
+  data: RecruitCrmPitchRecord;
+  [key: string]: unknown;
+};
+
+export type RecruitCrmPitchRecordsResponse = {
+  data?: {
+    records?: RecruitCrmPitchRecord[];
+    [key: string]: unknown;
+  };
+  message?: string | number | null;
+  status?: boolean | string | number | null;
+  statusCode?: number | string | null;
+  "status code"?: number | string | null;
+  [key: string]: unknown;
+};
+
+export type PitchStageSummary = {
+  status_id: number | null;
+  label: string | null;
+};
+
+export type ListPitchStagesResult = {
+  returned_count: number;
+  stages: PitchStageSummary[];
+};
+
+export type PitchRecordSummary = {
+  candidate_slug: string | null;
+  contact_slug: string | null;
+  status_id: number | null;
+  status_label: string | null;
+  remark: string | null;
+  stage_date: string | null;
+  contact_title: string | null;
+  contact_name: string | null;
+  candidate_name: string | null;
+  candidate_position: string | null;
+  created_on: string | null;
+  created_by: number | null;
+  updated_on: string | null;
+  updated_by: number | null;
+};
+
+export type PitchHistoryRecordSummary = Omit<PitchRecordSummary, "created_by">;
+
+export type PitchCandidateToContactResult = {
+  candidate_slug: string | null;
+  contact_slug: string | null;
+  status_id: number | null;
+  status_label: string | null;
+  remark: string | null;
+  stage_date: string | null;
+  created_on: string | null;
+  created_by: number | null;
+  updated_on: string | null;
+  updated_by: number | null;
+};
+
+export type UpdateCandidatePitchStageResult = PitchCandidateToContactResult;
+
+export type PitchHistoryResult = {
+  entity_type: PitchEntityType;
+  entity_slug: string;
+  returned_count: number;
+  history: PitchHistoryRecordSummary[];
+};
+
+export type PitchedRecordsResult = {
+  entity_type: PitchEntityType;
+  entity_slug: string;
+  returned_count: number;
+  records: PitchRecordSummary[];
+};
 
 export type RecruitCrmJobStatus = {
   id?: number | string | null;
@@ -546,10 +1175,12 @@ export type RecruitCrmJob = {
   application_form_url?: string | number | null;
   created_on?: string | number | null;
   updated_on?: string | number | null;
-  owner?: number | string | null;
+  owner?: number | string | RecruitCrmUserReference | null;
   hiring_pipeline_id?: number | string | null;
   [key: string]: unknown;
 };
+
+export type CreatedJob = RecruitCrmJob;
 
 export type RecruitCrmJobSearchResponse = {
   current_page?: number;
@@ -557,11 +1188,40 @@ export type RecruitCrmJobSearchResponse = {
   data: RecruitCrmJob[];
 };
 
+export type CreateJobResult = {
+  action: "created" | "updated";
+  job_slug: string;
+  job_id: number | null;
+  name: string | null;
+  company_slug: string | null;
+  contact_slug: string | null;
+  job_status: JobStatusSummary | null;
+  owner: number | null;
+  enable_job_application_form: boolean | null;
+  application_form_url: string | null;
+  created_on: string | null;
+  updated_on: string | null;
+  view_url: string | null;
+};
+
+export type RecruitCrmUserReference = {
+  id?: number | string | null;
+  first_name?: string | number | null;
+  last_name?: string | number | null;
+  [key: string]: unknown;
+};
+
 export type RecruitCrmCompany = {
   id?: number | string | null;
   slug?: string | number | null;
+  industry_id?: number | string | null;
   company_name?: string | number | null;
+  about_company?: string | number | null;
+  logo?: string | number | null;
   website?: string | number | null;
+  facebook?: string | number | null;
+  twitter?: string | number | null;
+  linkedin?: string | number | null;
   city?: string | number | null;
   locality?: string | number | null;
   state?: string | number | null;
@@ -578,6 +1238,8 @@ export type RecruitCrmCompany = {
   status_label?: string | number | null;
   off_limit_reason?: string | number | null;
   off_limit_end_date?: string | number | null;
+  created_by?: number | string | null;
+  updated_by?: number | string | null;
   created_on?: string | number | null;
   updated_on?: string | number | null;
   [key: string]: unknown;
@@ -715,7 +1377,7 @@ export type RecruitCrmTask = {
   associated_jobs?: Array<string | number | null> | string | number | null;
   associated_deals?: Array<string | number | null> | string | number | null;
   collaborators?: RecruitCrmTaskCollaborator[] | null;
-  collaborator_users?: RecruitCrmTaskCollaboratorUser[] | null;
+  collaborator_users?: Array<RecruitCrmTaskCollaboratorUser | number | string | null> | null;
   collaborator_teams?: Array<RecruitCrmTaskCollaboratorTeam | number | string | null> | null;
   [key: string]: unknown;
 };
@@ -745,7 +1407,7 @@ export type RecruitCrmMeeting = {
   end_date?: string | number | null;
   related_to?: string | number | null;
   related_to_type?: string | number | null;
-  related?: RecruitCrmActivityRelated | null;
+  related?: RecruitCrmActivityRelated | string | null;
   do_not_send_calendar_invites?: number | string | boolean | null;
   status?: number | string | null;
   reminder_date?: string | number | null;
@@ -853,6 +1515,46 @@ export type RecruitCrmCallLogType = {
   [key: string]: unknown;
 };
 
+export type RecruitCrmCallLogTypeListResponse = RecruitCrmCallLogType[];
+
+export type CallLogRelatedToType = "candidate" | "contact" | "company";
+
+export type CreateCallLogInput = {
+  call_type: "CALL_OUTGOING" | "CALL_INCOMING";
+  custom_call_type_id: number;
+  call_started_on: string;
+  related_to_type: CallLogRelatedToType;
+  created_by: number;
+  updated_by: number;
+  contact_number?: string;
+  call_notes?: string;
+  related_to?: string;
+  duration?: string;
+  associated_candidates?: string[];
+  associated_contacts?: string[];
+  associated_companies?: string[];
+  associated_jobs?: string[];
+  associated_deals?: string[];
+  collaborator_user_ids?: number[];
+  collaborator_team_ids?: number[];
+  enable_auto_populate_teams?: boolean;
+};
+
+export type UpdateCallLogInput = Partial<Omit<CreateCallLogInput, "created_by">> & {
+  call_log_id: number;
+  updated_by: number;
+};
+
+export type CreatedCallLog = RecruitCrmCallLog & {
+  associated_candidates?: Array<string | number> | null;
+  associated_contacts?: Array<string | number> | null;
+  associated_companies?: Array<string | number> | null;
+  associated_jobs?: Array<string | number> | null;
+  associated_deals?: Array<string | number> | null;
+  collaborator_users?: Array<number | string> | null;
+  collaborator_teams?: Array<number | string> | null;
+};
+
 export type RecruitCrmCallLog = {
   id?: number | string | null;
   call_type?: string | number | null;
@@ -862,7 +1564,7 @@ export type RecruitCrmCallLog = {
   call_notes?: string | number | null;
   related_to?: string | number | null;
   related_to_type?: string | number | null;
-  related?: RecruitCrmActivityRelated | null;
+  related?: RecruitCrmActivityRelated | string | null;
   duration?: number | string | null;
   created_on?: string | number | null;
   updated_on?: string | number | null;
@@ -1239,6 +1941,35 @@ export type SearchCallLogsResult = {
   call_logs: CallLogSummary[];
 };
 
+export type ListCallTypesResult = {
+  returned_count: number;
+  call_types: CallLogTypeSummary[];
+};
+
+export type CreateCallLogResult = {
+  call_log_id: number | null;
+  call_type: string | null;
+  custom_call_type: CallLogTypeSummary | null;
+  call_started_on: string | null;
+  contact_number: string | null;
+  call_notes: string | null;
+  related_to: string | null;
+  related_to_type: string | null;
+  related_to_view_url: string | null;
+  duration: string | number | null;
+  associated_candidates: string[];
+  associated_contacts: string[];
+  associated_companies: string[];
+  associated_jobs: string[];
+  associated_deals: string[];
+  created_on: string | null;
+  updated_on: string | null;
+  created_by: number | null;
+  updated_by: number | null;
+  collaborator_users: number[];
+  collaborator_teams: number[];
+};
+
 export type JobStatusSummary = {
   id: number | null;
   label: string | null;
@@ -1456,10 +2187,14 @@ export type CandidateCustomFieldSummary = {
   options_preview: string[];
 };
 
+export type CustomFieldSummary = CandidateCustomFieldSummary;
+
 export type CandidateCustomFieldListResult = {
   returned_count: number;
   fields: CandidateCustomFieldSummary[];
 };
+
+export type CustomFieldListResult = CandidateCustomFieldListResult;
 
 export type CandidateCustomFieldDetail = {
   field_id: number;
@@ -1471,9 +2206,21 @@ export type CandidateCustomFieldDetail = {
   option_values: string[] | null;
 };
 
+export type CustomFieldDetail = CandidateCustomFieldDetail;
+
+export type ListCustomFieldsInput = {
+  entity_type: "candidates" | "contacts" | "companies" | "jobs" | "deals";
+  include_non_searchable?: boolean;
+};
+
+export type GetCustomFieldDetailsInput = {
+  field_id: number;
+  entity_type: "candidates" | "contacts" | "companies" | "jobs" | "deals";
+};
+
 export type CandidateDetail = {
-  id?: number | string;
-  slug?: number | string;
+  id?: number | string | null;
+  slug?: number | string | null;
   resume?: unknown;
   custom_fields?: unknown[];
   work_history?: unknown[];
@@ -1482,8 +2229,8 @@ export type CandidateDetail = {
 };
 
 export type CompanyDetail = {
-  id?: number | string;
-  slug?: number | string;
+  id?: number | string | null;
+  slug?: number | string | null;
   contact_slug?: unknown;
   custom_fields?: unknown[];
   resource_url?: unknown;
@@ -1491,8 +2238,9 @@ export type CompanyDetail = {
 };
 
 export type ContactDetail = {
-  id?: number | string;
-  slug?: number | string;
+  id?: number | string | null;
+  slug?: number | string | null;
+  company_slug?: number | string | null;
   additional_company_slugs?: unknown;
   custom_fields?: unknown[];
   resource_url?: unknown;
@@ -1509,6 +2257,10 @@ export type GetCompanyDetailsInput = {
 
 export type GetContactDetailsInput = {
   contact_slugs: string[];
+};
+
+export type GetJobDetailsInput = {
+  job_slugs: string[];
 };
 
 export type AddRecordsToHotlistInput = {
@@ -1558,6 +2310,20 @@ export type ContactDetailsResult = {
   errors: ContactDetailsError[];
 };
 
+export type JobDetailsError = {
+  slug: string;
+  error: string;
+  status_code: number | null;
+};
+
+export type JobDetailsResult = {
+  requested_count: number;
+  successful_count: number;
+  failed_count: number;
+  jobs: JobDetail[];
+  errors: JobDetailsError[];
+};
+
 export type AddRecordsToHotlistError = {
   slug: string;
   error: string;
@@ -1574,8 +2340,10 @@ export type AddRecordsToHotlistResult = {
 };
 
 export type JobDetail = {
-  id?: number | string;
-  slug?: number | string;
+  id?: number | string | null;
+  slug?: number | string | null;
+  company_slug?: number | string | null;
+  contact_slug?: number | string | null;
   job_questions?: unknown[];
   custom_fields?: unknown[];
   targetcompanies?: unknown[];
@@ -1583,6 +2351,172 @@ export type JobDetail = {
   collaborator_teams?: unknown[];
   xml_feeds?: unknown[];
   [key: string]: unknown;
+};
+
+export type PrepareClientBriefInput = {
+  contact_slug?: string;
+  company_slug?: string;
+  lookback_days?: number;
+  max_open_jobs?: number;
+  max_related_contacts?: number;
+  max_assigned_candidates_per_job?: number;
+  feedback_wait_days_threshold?: number;
+  include_activity?: boolean;
+  include_pipeline_summary?: boolean;
+  include_contact_info?: boolean;
+};
+
+export type PrepareClientBriefError = {
+  source: "contact" | "company" | "contacts" | "jobs" | "assignments" | "activity" | "pitch" | "users";
+  slug?: string;
+  message: string;
+  status_code: number | null;
+};
+
+export type PrepareClientBriefCompany = {
+  slug: string | null;
+  name: string | null;
+  owner: number | null;
+  owner_name: string | null;
+  city: string | null;
+  state: string | null;
+  country: string | null;
+  website: string | null;
+  marked_as_off_limit: boolean | null;
+  view_url: string | null;
+};
+
+export type PrepareClientBriefJobContact = {
+  slug: string;
+  name: string | null;
+  designation: string | null;
+  company_slug: string | null;
+  owner: number | null;
+  owner_name: string | null;
+  view_url: string;
+  email?: string | null;
+  contact_number?: string | null;
+  linkedin?: string | null;
+};
+
+export type PrepareClientBriefContact = PrepareClientBriefJobContact & {
+  relationships: string[];
+  job_slugs: string[];
+  last_activity_at: string | null;
+};
+
+export type PrepareClientBriefActivitySummary = {
+  entity_type: "company" | "contact" | "job";
+  entity_slug: string;
+  notes_count: number;
+  meetings_count: number;
+  tasks_count: number;
+  call_logs_count: number;
+  last_note_at: string | null;
+  last_meeting_at: string | null;
+  last_call_at: string | null;
+  next_task_due_at: string | null;
+  last_touch_at: string | null;
+};
+
+export type PrepareClientBriefStageCount = {
+  stage_id: number | null;
+  label: string;
+  count: number;
+  median_days_in_stage: number | null;
+};
+
+export type PrepareClientBriefWaitingCandidate = {
+  candidate_slug: string;
+  name: string | null;
+  current_stage: string | null;
+  days_in_current_stage: number | null;
+  last_activity_at: string | null;
+};
+
+export type PrepareClientBriefJobPipelineSummary = {
+  assigned_count: number;
+  active_count: number;
+  terminal_count: number;
+  stage_counts: PrepareClientBriefStageCount[];
+  bottleneck: {
+    stage_label: string;
+    count: number;
+    median_days_in_stage: number | null;
+    reason: string;
+  } | null;
+  candidates_waiting_on_client: PrepareClientBriefWaitingCandidate[];
+  has_more_assigned_candidates: boolean;
+};
+
+export type PrepareClientBriefJob = {
+  slug: string;
+  name: string | null;
+  status_label: string | null;
+  days_open: number | null;
+  number_of_openings: number | null;
+  owner: number | null;
+  owner_name: string | null;
+  company_slug: string | null;
+  contact_slug: string | null;
+  secondary_contact_slugs: string[];
+  hiring_pipeline_id: number | null;
+  view_url: string;
+  primary_contact: PrepareClientBriefJobContact | null;
+  secondary_contacts: PrepareClientBriefJobContact[];
+  pipeline_summary: PrepareClientBriefJobPipelineSummary | null;
+  activity: PrepareClientBriefActivitySummary | null;
+  risks: string[];
+  talking_points: string[];
+};
+
+export type PrepareClientBriefResult = {
+  brief_type: "client";
+  scope: {
+    input_contact_slug: string | null;
+    input_company_slug: string | null;
+    resolved_company_slug: string | null;
+    lookback_days: number;
+    generated_at: string;
+  };
+  client: {
+    company: PrepareClientBriefCompany | null;
+    primary_contact: PrepareClientBriefContact | null;
+    related_contacts: PrepareClientBriefContact[];
+  };
+  account_health: {
+    open_jobs_count: number;
+    jobs_returned: number;
+    active_candidates_count: number;
+    candidates_waiting_on_client_count: number;
+    last_touch_at: string | null;
+    next_task_due_at: string | null;
+    relationship_risk: "low" | "medium" | "high";
+    relationship_risk_reasons: string[];
+  };
+  jobs: PrepareClientBriefJob[];
+  pitched_candidates: {
+    returned_count: number;
+    records: PitchRecordSummary[];
+  } | null;
+  activity: PrepareClientBriefActivitySummary[];
+  suggested_talking_points: string[];
+  recommended_followups: Array<{
+    action: "create_task" | "create_note" | "review_pipeline";
+    reason: string;
+    related_to_type: "company" | "contact" | "job";
+    related_to: string;
+  }>;
+  coverage: {
+    jobs_checked: number;
+    jobs_truncated: boolean;
+    related_contacts_checked: number;
+    activity_entities_checked: number;
+    assigned_candidate_pages_checked: number;
+    assignments_truncated: boolean;
+    included_contact_info: boolean;
+  };
+  errors: PrepareClientBriefError[];
 };
 
 export type AnalyzeJobPipelineInput = {
@@ -1684,11 +2618,11 @@ export type AnalyzeJobPipelineResult = {
     owner: number | null;
     owner_name: string | null;
     company_slug: string | null;
-    hiring_pipeline_id: number | null;
     created_on: string | null;
     days_open: number | null;
     number_of_openings: number | null;
     view_url: string;
+    hiring_pipeline_id: number | null;
   };
   pipeline: {
     window: {
@@ -1738,6 +2672,41 @@ export type CustomFieldDependenciesOutput = {
   dependency_count: number;
   dependencies: CustomFieldDependencyEntry[];
 };
+
+export type ListCandidateHiringStagesInput = {
+  hiring_pipeline_id?: number;
+};
+
+export type UpdateCandidateHiringStageInput = {
+  candidate_slug: string;
+  job_slug: string;
+  status_id: number;
+  remark?: string;
+  stage_date: string;
+  updated_by: number;
+  create_placement?: boolean;
+};
+
+export type AssignCandidateToJobInput = {
+  candidate_slug: string;
+  job_slug: string;
+  updated_by: number;
+};
+
+export type RecruitCrmCandidateHiringStageUpdateResponse = {
+  job_slug?: string | number | null;
+  candidate_slug?: string | number | null;
+  status?: RecruitCrmAssignedCandidateStatus | null;
+  remark?: string | number | null;
+  stage_date?: string | number | null;
+  visibility?: number | string | boolean | null;
+  shared_list_url?: string | number | null;
+  updated_on?: string | number | null;
+  updated_by?: number | string | null;
+  [key: string]: unknown;
+};
+
+export type RecruitCrmCandidateJobAssignmentResponse = RecruitCrmCandidateHiringStageUpdateResponse;
 
 export type UpdateCandidateHiringStageResult = {
   candidate_slug: string | null;

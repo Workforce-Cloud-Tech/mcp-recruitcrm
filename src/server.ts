@@ -12,20 +12,38 @@ import {
 } from "./recruitcrm/custom-fields.js";
 import type { HttpTransport } from "./recruitcrm/http.js";
 import {
-  mapAssignCandidateToJobResult,
   mapCandidateHiringStagesResult,
   mapJobStatusesResult,
   mapCandidateJobAssignmentHiringStageHistoryResult,
   mapCreateCandidateResult,
+  mapCreateCallLogResult,
   mapCreateHotlistResult,
+  mapCreatedCompanyResult,
+  mapCreatedContactResult,
+  mapCreatedJobResult,
   mapCreateMeetingResult,
   mapCreateNoteResult,
   mapCreateTaskResult,
   mapJobAssignedCandidatesResult,
+  mapListCallTypesResult,
+  mapListCandidateQuestionsResult,
+  mapListContactStagesResult,
+  mapListCurrenciesResult,
+  mapListHiringPipelinesResult,
+  mapListLanguagesAndProficienciesResult,
   mapListMeetingTypesResult,
   mapListNoteTypesResult,
+  mapListOffLimitStatusesResult,
+  mapListPitchStagesResult,
+  mapListQualificationsResult,
+  mapListTeamsResult,
   mapListTaskTypesResult,
   mapListUsersResult,
+  mapListXmlJobboardsResult,
+  mapMarkCandidateOffLimitResult,
+  mapMarkCompanyOffLimitResult,
+  mapMarkContactOffLimitResult,
+  mapMarkRecordsAvailableResult,
   mapSearchCallLogsResult,
   mapSearchCandidatesResult,
   mapSearchCompaniesResult,
@@ -35,11 +53,26 @@ import {
   mapSearchMeetingsResult,
   mapSearchNotesResult,
   mapSearchTasksResult,
+  mapAssignCandidateToJobResult,
+  mapPitchCandidateToContactResult,
+  mapPitchHistoryResult,
+  mapPitchedRecordsResult,
+  mapUpdateCandidatePitchStageResult,
   mapUpdateCandidateHiringStageResult,
 } from "./recruitcrm/mappers.js";
 import {
   type AddRecordsToHotlistInput,
   type AddRecordsToHotlistResult,
+  type PrepareClientBriefActivitySummary,
+  type PrepareClientBriefCompany,
+  type PrepareClientBriefContact,
+  type PrepareClientBriefError,
+  type PrepareClientBriefInput,
+  type PrepareClientBriefJob,
+  type PrepareClientBriefJobContact,
+  type PrepareClientBriefJobPipelineSummary,
+  type PrepareClientBriefResult,
+  type PrepareClientBriefWaitingCandidate,
   type AnalyzeJobPipelineActivity,
   type AnalyzeJobPipelineBottleneck,
   type AnalyzeJobPipelineError,
@@ -55,15 +88,32 @@ import {
   type AssignedCandidateSummary,
   type CandidateHiringStagesResult,
   type JobStatusesResult,
+  type CallLogRelatedToType,
+  type CreateCallLogInput,
+  type CreateCallLogResult,
+  type CreateCompanyInput,
+  type CreateCompanyResult,
+  type ListCallTypesResult,
+  type ListCandidateQuestionsResult,
+  type ListCurrenciesResult,
+  type ListHiringPipelinesResult,
+  type ListLanguagesAndProficienciesResult,
+  type ListQualificationsResult,
+  type ListTeamsInput,
+  type ListTeamsResult,
+  type ListXmlJobboardsResult,
   type SearchCallLogsInput,
   type SearchCallLogsResult,
   type CandidateJobAssignmentHiringStageHistoryResult,
   type CandidateHistoryCreateResponse,
   type CreateHotlistInput,
   type CreateHotlistResult,
+  type CreateJobInput,
+  type CreateJobResult,
   type CreateCandidateHistoryError,
   type CreateCandidateInput,
   type CreateCandidateResult,
+  type CreatedCandidate,
   type CreateMeetingInput,
   type CreateMeetingResult,
   type CreateNoteInput,
@@ -73,6 +123,10 @@ import {
   CUSTOM_FIELD_FILTER_TYPES,
   type CandidateCustomFieldDetail,
   type CandidateCustomFieldListResult,
+  type CustomFieldDetail,
+  type CustomFieldListResult,
+  type GetCustomFieldDetailsInput,
+  type ListCustomFieldsInput,
   type CandidateDetail,
   type CandidateDetailsError,
   type CandidateDetailsResult,
@@ -85,18 +139,31 @@ import {
   type GetCandidateDetailsInput,
   type GetCompanyDetailsInput,
   type GetContactDetailsInput,
+  type GetJobDetailsInput,
   type GetJobAssignedCandidatesInput,
   type JobAssignedCandidatesResult,
   type JobDetail,
+  type JobDetailsError,
+  type JobDetailsResult,
   type ListCandidatesInput,
   type ListCompaniesInput,
   type ListContactsInput,
   type ListJobsInput,
   type ListMeetingTypesResult,
   type ListNoteTypesResult,
+  type ListOffLimitStatusesResult,
+  type ListPitchStagesResult,
   type ListTaskTypesResult,
   type ListUsersInput,
   type ListUsersResult,
+  type MarkCandidateOffLimitInput,
+  type MarkCandidateOffLimitResult,
+  type MarkCompanyOffLimitInput,
+  type MarkCompanyOffLimitResult,
+  type MarkContactOffLimitInput,
+  type MarkContactOffLimitResult,
+  type MarkRecordsAvailableInput,
+  type MarkRecordsAvailableResult,
   type RecruitCrmMeetingType,
   type RecruitCrmNoteType,
   type RecruitCrmTaskType,
@@ -120,11 +187,30 @@ import {
   type CustomFieldDependenciesOutput,
   type AssignCandidateToJobInput,
   type AssignCandidateToJobResult,
+  type ContactStageSummary,
+  type CreateContactInput,
+  type CreateContactResult,
   type ListCandidateHiringStagesInput,
+  type ListContactStagesResult,
+  type PitchCandidateToContactInput,
+  type PitchCandidateToContactResult,
+  type PitchEntityType,
+  type PitchHistoryResult,
+  type PitchedRecordsResult,
   type RecruitCrmJob,
   type RecruitCrmJobSearchResponse,
+  type UpdateCandidatePitchStageInput,
+  type UpdateCandidatePitchStageResult,
   type UpdateCandidateHiringStageInput,
   type UpdateCandidateHiringStageResult,
+  type UpdateCallLogInput,
+  type UpdateCandidateInput,
+  type UpdateCompanyInput,
+  type UpdateContactInput,
+  type UpdateJobInput,
+  type UpdateMeetingInput,
+  type UpdateNoteInput,
+  type UpdateTaskInput,
 } from "./recruitcrm/types.js";
 
 const booleanLikeSchema = z
@@ -132,20 +218,32 @@ const booleanLikeSchema = z
   .transform((value) => value === true || value === "true" || value === "1" || value === 1);
 
 const textFilterSchema = z.string().trim().min(1);
+const offLimitEndDateSchema = z
+  .string()
+  .trim()
+  .regex(/^(0[1-9]|[12]\d|3[01])-(0[1-9]|1[0-2])-\d{4}$/, "Use DD-MM-YYYY, for example 29-06-2026.");
 const statusIdFilterSchema = z
   .union([z.coerce.number().int().positive(), textFilterSchema])
   .transform((value) => String(value));
 const customFieldFilterValueSchema = z.union([z.string().trim().min(1), z.number()]);
 const customFieldFilterTypeSchema = z.enum(CUSTOM_FIELD_FILTER_TYPES);
 const binaryNumberSchema = z
-  .union([z.literal("0"), z.literal("1"), z.literal(0), z.literal(1)])
-  .transform((value) => Number(value) as 0 | 1);
+  .union([z.boolean(), z.literal("true"), z.literal("false"), z.literal("0"), z.literal("1"), z.literal(0), z.literal(1)])
+  .transform((value) => (value === true || value === "true" || value === "1" || value === 1 ? 1 : 0) as 0 | 1);
 const jobTypeInputSchema = z
-  .union([z.literal("1"), z.literal("2"), z.literal("3"), z.literal("4"), z.literal(1), z.literal(2), z.literal(3), z.literal(4)])
-  .transform((value) => Number(value) as 1 | 2 | 3 | 4);
+  .enum(["Part Time", "Full Time", "Contract", "Contract to Permanent"])
+  .transform((v) => (({ "Part Time": 1, "Full Time": 2, "Contract": 3, "Contract to Permanent": 4 } as const)[v]));
+
+const taskRelatedToTypeSchema = z.enum(["candidate", "company", "contact", "job", "deal"]);
+const meetingRelatedToTypeSchema = z.enum(["candidate", "company", "contact", "job", "deal"]);
+const noteRelatedToTypeSchema = z.enum(["candidate", "company", "contact", "job", "deal"]);
+const callLogRelatedToTypeSchema = z.enum(["candidate", "contact", "company"]);
+const markRecordsAvailableRecordTypeSchema = z.enum(["candidate", "contact", "company"]);
+const pitchEntityTypeSchema = z.enum(["candidate", "contact"]);
 
 const searchCandidatesInputSchema = {
   page: z.coerce.number().int().min(1).optional().describe("Page number."),
+  limit: z.coerce.number().int().min(1).max(100).optional().describe("Records per page (max 100, default 100)."),
   created_from: textFilterSchema.optional().describe("Created from date."),
   created_to: textFilterSchema.optional().describe("Created to date."),
   email: textFilterSchema.optional().describe("Candidate email."),
@@ -211,7 +309,7 @@ const createCandidateWorkHistoryInputSchema = z.object({
   industry_id: z.coerce.number().int().positive().optional().describe("Recruit CRM industry id."),
   work_location: textFilterSchema.optional().describe("Work location."),
   salary: createCandidateScalarSchema.optional().describe("Salary for this work history row."),
-  is_currently_working: binaryNumberSchema.optional().describe("Current role flag: 1 current, 0 past."),
+  is_currently_working: binaryNumberSchema.optional().describe("Current role flag: true if currently working, false if past role."),
   work_start_date: z.coerce.number().int().nonnegative().optional().describe("Work start date as Unix seconds."),
   work_end_date: z.coerce.number().int().nonnegative().optional().describe("Work end date as Unix seconds."),
   work_description: textFilterSchema.optional().describe("Work description."),
@@ -226,7 +324,7 @@ const createCandidateEducationHistoryInputSchema = z.object({
   education_end_date: z.coerce.number().int().nonnegative().optional().describe("Education end date as Unix seconds."),
   education_description: textFilterSchema.optional().describe("Education description."),
 });
-const createCandidateInputSchema = {
+const candidateMutationFieldsInputSchema = {
   first_name: textFilterSchema.optional().describe("Candidate first name. At least one of first_name or last_name is required."),
   last_name: textFilterSchema.optional().describe("Candidate last name. At least one of first_name or last_name is required."),
   email: textFilterSchema.optional().describe("Candidate email."),
@@ -243,7 +341,7 @@ const createCandidateInputSchema = {
   current_organization: textFilterSchema.optional().describe("Current organization name."),
   current_organization_slug: textFilterSchema
     .optional()
-    .describe("Current organization company slug. Use search_companies to resolve the company slug."),
+    .describe("Current organization company slug."),
   current_status: textFilterSchema.optional().describe("Current candidate status."),
   notice_period: z.coerce.number().int().nonnegative().optional().describe("Notice period in days."),
   facebook: textFilterSchema.optional().describe("Facebook URL."),
@@ -261,7 +359,7 @@ const createCandidateInputSchema = {
   position: textFilterSchema.optional().describe("Candidate position/title."),
   available_from: textFilterSchema.optional().describe("Available-from date, preferably YYYY-MM-DD."),
   salary_type: z.coerce.number().int().positive().optional().describe("Recruit CRM salary type id."),
-  source: textFilterSchema.optional().describe("Candidate source. If the user doesn't specify, use the name of your AI assistant (e.g. 'Claude')."),
+  source: textFilterSchema.optional().describe("Candidate source (e.g. 'Claude', 'LinkedIn')."),
   language_skills: z
     .array(
       z.object({
@@ -272,21 +370,21 @@ const createCandidateInputSchema = {
     .optional()
     .describe("Candidate language skills."),
   skill: textFilterSchema.optional().describe("Comma-separated candidate skills."),
-  resume: textFilterSchema.optional().describe("Resume URL."),
-  owner_id: z.coerce.number().int().positive().optional().describe("Candidate owner user ID. Required when creating. Use list_users to resolve."),
-  created_by: z.coerce.number().int().positive().optional().describe("Creating user ID. Required when creating. Use list_users to resolve."),
+  resume: textFilterSchema.optional().describe("Resume file. Accepts a publicly accessible HTTPS direct download URL or a base64-encoded file string. Max file size 16 MB."),
+  owner_id: z.coerce.number().int().positive().optional().describe("Candidate owner user ID. Required when creating."),
+  created_by: z.coerce.number().int().positive().optional().describe("Creating user ID. Required when creating."),
   updated_by: z.coerce.number().int().positive().optional().describe("Updating user ID. Required when updating. Defaults to created_by on create if omitted."),
   custom_fields: z
     .array(
       z.object({
         field_id: z.coerce.number().int().positive().describe("Candidate custom field id."),
         value: createCandidateCustomFieldValueSchema.describe(
-          "Custom field value. For dropdown or multiselect fields use get_candidate_custom_field_details to confirm valid option values before setting.",
+          "Custom field value. File-type custom fields accept a publicly accessible HTTPS direct download URL only; the API fetches and stores the file from that URL (base64 is not supported for custom file fields). Dropdown and multiselect fields require a value matching the options returned by get_custom_field_details.",
         ),
       }),
     )
     .optional()
-    .describe("Candidate custom field values. Always call list_candidate_custom_fields first to resolve field_id, then get_candidate_custom_field_details for any dropdown or multiselect field to confirm valid option values."),
+    .describe("Candidate custom field values. Dropdown and multiselect fields require a value matching the options returned by get_custom_field_details."),
   candidate_summary: z.string().trim().min(1).optional().describe("Candidate summary. Supports basic HTML/rich text."),
   work_history: z
     .array(createCandidateWorkHistoryInputSchema)
@@ -298,14 +396,19 @@ const createCandidateInputSchema = {
     .max(10)
     .optional()
     .describe("Latest education history rows to create after the candidate is created or updated. Max 10 rows."),
-  existing_candidate_slug: textFilterSchema
-    .optional()
-    .describe(
-      "Existing candidate slug to update instead of creating a new candidate. Use only after duplicate search and explicit user confirmation.",
-    ),
+};
+
+const createCandidateInputSchema = {
+  ...candidateMutationFieldsInputSchema,
   allow_duplicate: booleanLikeSchema
     .optional()
-    .describe("Set true only after duplicate search and explicit user confirmation to create a duplicate candidate."),
+    .describe("Set true to create a candidate even if a duplicate exists."),
+};
+
+const updateCandidateInputSchema = {
+  candidate_slug: textFilterSchema.describe("Existing candidate slug to update."),
+  ...candidateMutationFieldsInputSchema,
+  updated_by: z.coerce.number().int().positive().describe("Recruit CRM user id updating the candidate."),
 };
 
 const listJobsInputSchema = {
@@ -315,11 +418,162 @@ const listJobsInputSchema = {
   sort_order: z.enum(["asc", "desc"]).optional().describe("Sort order (default desc)."),
 };
 
+const metadataListInputSchema = {
+  page: z.coerce.number().int().min(1).optional().describe("Page number. Pagination is applied by this MCP server because the Recruit CRM metadata endpoint returns all rows."),
+  limit: z.coerce.number().int().min(1).max(500).optional().describe("Records per page (max 500, default 100)."),
+};
+
+const listTeamsInputSchema = {
+  ...metadataListInputSchema,
+  expand: z.enum(["user"]).optional().describe("Optional expansion. Use user to return user summaries instead of user IDs."),
+  include_user_contact_info: booleanLikeSchema.optional().describe("When true and expand=user, include user email, contact_number, and avatar. Defaults to false."),
+};
+
+const salaryTypeInputSchema = z
+  .union([
+    z.literal("1"),
+    z.literal("2"),
+    z.literal("3"),
+    z.literal("4"),
+    z.literal("5"),
+    z.literal(1),
+    z.literal(2),
+    z.literal(3),
+    z.literal(4),
+    z.literal(5),
+  ])
+  .transform((value) => Number(value) as 1 | 2 | 3 | 4 | 5);
+const jobLocationTypeInputSchema = z
+  .union([z.literal("0"), z.literal("1"), z.literal("2"), z.literal(0), z.literal(1), z.literal(2)])
+  .transform((value) => Number(value) as 0 | 1 | 2);
+const showCompanyLogoInputSchema = z
+  .union([z.literal("0"), z.literal("1"), z.literal("2"), z.literal(0), z.literal(1), z.literal(2)])
+  .transform((value) => Number(value) as 0 | 1 | 2);
+const createJobSlugListSchema = z.array(textFilterSchema).min(1).max(25);
+const createJobCollaboratorIdsSchema = z.array(z.coerce.number().int().positive()).min(1).max(25);
+const jobCustomFieldInputSchema = z.object({
+  field_id: z.coerce.number().int().positive().describe("Job custom field ID."),
+  value: z.string().trim().min(1).describe("Custom field value."),
+});
+const jobXmlFeedsInputSchema = z.object({
+  default: textFilterSchema.optional().describe("Comma-separated default XML feed board IDs."),
+  custom: textFilterSchema.optional().describe("Comma-separated custom XML feed board IDs."),
+});
+
+const jobMutationOptionalFieldsInputSchema = {
+  job_status: z.coerce.number().int().nonnegative().optional().describe("Job status ID. Built-ins: 0 Closed, 1 Open, 2 On-Hold, 3 Cancelled."),
+  number_of_openings: z.coerce.number().int().positive().optional().describe("Number of open positions."),
+  secondary_contact_slugs: createJobSlugListSchema.optional().describe("Secondary contact slugs. Requires company_slug. Sent as a comma-separated API field."),
+  job_description_file: textFilterSchema.optional().describe("Public direct download URL for a job description file. Base64 is not supported."),
+  minimum_experience: z.coerce.number().nonnegative().optional().describe("Minimum experience."),
+  maximum_experience: z.coerce.number().nonnegative().optional().describe("Maximum experience."),
+  salary_type: salaryTypeInputSchema.optional().describe("Salary type: 1 Monthly, 2 Annual, 3 Weekly, 4 Daily, 5 Hourly."),
+  min_annual_salary: z.coerce.number().nonnegative().optional().describe("Minimum annual salary."),
+  max_annual_salary: z.coerce.number().nonnegative().optional().describe("Maximum annual salary."),
+  pay_rate: z.coerce.number().nonnegative().optional().describe("Pay rate."),
+  bill_rate: z.coerce.number().nonnegative().optional().describe("Bill rate."),
+  qualification_id: z.coerce.number().int().positive().optional().describe("Qualification ID."),
+  specialization: textFilterSchema.optional().describe("Specialization."),
+  job_skill: textFilterSchema.optional().describe("Job skill."),
+  job_type: jobTypeInputSchema.optional().describe("Job type."),
+  job_category: textFilterSchema.optional().describe("Job category."),
+  city: textFilterSchema.optional().describe("City."),
+  locality: textFilterSchema.optional().describe("Locality."),
+  state: textFilterSchema.optional().describe("State."),
+  country: textFilterSchema.optional().describe("Country."),
+  address: textFilterSchema.optional().describe("Full address."),
+  postal_code: textFilterSchema.optional().describe("Postal code."),
+  job_location_type: jobLocationTypeInputSchema.optional().describe("Job location type: 0 On-Site, 1 Remote, 2 Hybrid."),
+  collaborator_user_ids: createJobCollaboratorIdsSchema.optional().describe("Collaborator user IDs. Max 25. Sent as a comma-separated API field."),
+  collaborator_team_ids: createJobCollaboratorIdsSchema.optional().describe("Collaborator team IDs. Max 25."),
+  enable_auto_populate_teams: booleanLikeSchema.optional().describe("When true, Recruit CRM auto-assigns teams based on created_by. Defaults to true for create_job."),
+  show_company_logo: showCompanyLogoInputSchema.optional().describe("Logo setting: 1 job company logo, 0 account logo, 2 no logo."),
+  job_questions: textFilterSchema.optional().describe("Candidate question IDs/configuration."),
+  note_for_candidates: z.string().trim().min(1).optional().describe("Note for candidates."),
+  hiring_pipeline_id: z.coerce.number().int().positive().optional().describe("Hiring pipeline ID."),
+  xml_feeds: jobXmlFeedsInputSchema.optional().describe("XML feed board IDs."),
+  targetcompanies: createJobSlugListSchema.optional().describe("Target company slugs. Sent as a comma-separated API field."),
+  updated_by: z.coerce.number().int().positive().optional().describe("Updating user ID."),
+  custom_fields: z.array(jobCustomFieldInputSchema).min(1).optional().describe("Job custom field values."),
+};
+
+const createJobInputSchema = {
+  name: textFilterSchema.describe("Job title."),
+  company_slug: textFilterSchema.describe("Company slug."),
+  contact_slug: textFilterSchema.describe("Primary contact slug."),
+  job_description_text: z.string().min(1).optional().describe("Job description. Supports rich text HTML and is sent as-is. Live API verification showed this is optional on create."),
+  currency_id: z.coerce.number().int().nonnegative().optional().describe("Currency ID. Live API verification showed this is optional on create and defaults server-side when omitted."),
+  enable_job_application_form: binaryNumberSchema.describe("Job application form flag. Use 0 unless the user explicitly wants the form enabled."),
+  owner_id: z.coerce.number().int().positive().describe("Job owner user ID."),
+  created_by: z.coerce.number().int().positive().describe("Creating user ID."),
+  ...jobMutationOptionalFieldsInputSchema,
+};
+
+const updateJobInputSchema = {
+  job_slug: textFilterSchema.describe("Slug of the job to update."),
+  name: textFilterSchema.optional().describe("Job title."),
+  company_slug: textFilterSchema.optional().describe("Company slug."),
+  contact_slug: textFilterSchema.optional().describe("Primary contact slug."),
+  job_description_text: z.string().min(1).optional().describe("Job description. Supports rich text HTML and is sent as-is."),
+  currency_id: z.coerce.number().int().nonnegative().optional().describe("Currency ID."),
+  enable_job_application_form: binaryNumberSchema.optional().describe("Job application form flag. Use 0 unless the user explicitly wants the form enabled."),
+  owner_id: z.coerce.number().int().positive().optional().describe("Job owner user ID."),
+  created_by: z.coerce.number().int().positive().optional().describe("Creating user ID."),
+  ...jobMutationOptionalFieldsInputSchema,
+  updated_by: z.coerce.number().int().positive().describe("Recruit CRM user id updating the job."),
+};
+
 const listCompaniesInputSchema = {
   limit: z.coerce.number().int().min(1).max(100).optional().describe("Records per page (max 100, default 100)."),
   page: z.coerce.number().int().min(1).optional().describe("Page number (default 1)."),
   sort_by: z.enum(["createdon", "updatedon"]).optional().describe("Sort field (default updatedon)."),
   sort_order: z.enum(["asc", "desc"]).optional().describe("Sort order (default desc)."),
+};
+
+const companyCustomFieldInputSchema = z.object({
+  field_id: z.coerce.number().int().positive().describe("Company custom field ID."),
+  value: z.string().trim().min(1).describe("Custom field value."),
+});
+
+const companyMutationOptionalFieldsInputSchema = {
+  about_company: z.string().trim().min(1).max(5000).optional().describe("Company description. Maximum 5000 characters."),
+  city: textFilterSchema.optional().describe("City."),
+  locality: textFilterSchema.optional().describe("Locality."),
+  state: textFilterSchema.optional().describe("State."),
+  country: textFilterSchema.optional().describe("Country."),
+  postal_code: textFilterSchema.optional().describe("Postal code."),
+  address: z.string().trim().min(1).optional().describe("Full address."),
+  industry_id: z.coerce.number().int().nonnegative().optional().describe("Industry ID."),
+  logo: textFilterSchema.optional().describe("Logo URL."),
+  website: textFilterSchema.optional().describe("Website URL."),
+  facebook: textFilterSchema.optional().describe("Facebook profile."),
+  twitter: textFilterSchema.optional().describe("Twitter/X profile."),
+  linkedin: textFilterSchema.optional().describe("LinkedIn profile."),
+  custom_fields: z
+    .array(companyCustomFieldInputSchema)
+    .min(1)
+    .optional()
+    .describe("Company custom field values."),
+};
+
+const createCompanyInputSchema = {
+  company_name: textFilterSchema.describe("Company name."),
+  owner_id: z.coerce.number().int().positive().describe("Company owner user ID."),
+  created_by: z.coerce.number().int().positive().describe("Creating user ID."),
+  updated_by: z.coerce.number().int().positive().optional().describe("Updating user ID."),
+  ...companyMutationOptionalFieldsInputSchema,
+  allow_duplicate: booleanLikeSchema
+    .optional()
+    .describe("Set true to create a company even if a duplicate exists."),
+};
+
+const updateCompanyInputSchema = {
+  company_slug: textFilterSchema.describe("Slug of the company to update."),
+  company_name: textFilterSchema.optional().describe("Company name."),
+  owner_id: z.coerce.number().int().positive().optional().describe("Company owner user ID."),
+  created_by: z.coerce.number().int().positive().optional().describe("Creating user ID."),
+  updated_by: z.coerce.number().int().positive().describe("Recruit CRM user id updating the company."),
+  ...companyMutationOptionalFieldsInputSchema,
 };
 
 const listContactsInputSchema = {
@@ -332,6 +586,94 @@ const listContactsInputSchema = {
     .describe(
       "Opt-in flag (default false). When true, each result also includes email, contact_number, and linkedin. Leave off for most requests; enable only when the user explicitly needs contact details, because it increases response size and exposes PII.",
     ),
+};
+
+const contactMutationOptionalFieldsInputSchema = {
+  email: textFilterSchema.optional().describe("Contact email."),
+  contact_number: textFilterSchema.optional().describe("Contact phone number."),
+  company_slug: textFilterSchema.optional().describe("Comma-separated company slugs."),
+  avatar: textFilterSchema.optional().describe("Avatar URL."),
+  city: textFilterSchema.optional().describe("City."),
+  locality: textFilterSchema.optional().describe("Locality."),
+  state: textFilterSchema.optional().describe("State."),
+  country: textFilterSchema.optional().describe("Country."),
+  postal_code: textFilterSchema.optional().describe("Postal code."),
+  address: textFilterSchema.optional().describe("Full street address."),
+  designation: textFilterSchema.optional().describe("Designation (title)."),
+  facebook: textFilterSchema.optional().describe("Facebook profile URL."),
+  twitter: textFilterSchema.optional().describe("Twitter/X profile URL."),
+  linkedin: textFilterSchema.optional().describe("LinkedIn profile URL."),
+  stage_id: z.coerce.number().int().positive().optional().describe("Contact stage ID."),
+  updated_by: z.coerce.number().int().positive().optional().describe("Updating user ID."),
+  custom_fields: z
+    .array(
+      z.object({
+        field_id: z.coerce.number().int().positive().describe("Contact custom field ID."),
+        value: z.string().trim().min(1).describe("Custom field value."),
+      }),
+    )
+    .optional()
+    .describe("Contact custom field values."),
+};
+
+const createContactInputSchema = {
+  first_name: textFilterSchema.describe("Contact first name. Required."),
+  last_name: textFilterSchema.describe("Contact last name. Required."),
+  owner_id: z.coerce.number().int().positive().describe("Contact owner user ID."),
+  created_by: z.coerce.number().int().positive().describe("Creating user ID."),
+  ...contactMutationOptionalFieldsInputSchema,
+  allow_duplicate: booleanLikeSchema
+    .optional()
+    .describe("Set true to create a contact even if a duplicate exists."),
+};
+
+const updateContactInputSchema = {
+  contact_slug: textFilterSchema.describe("Slug of the contact to update."),
+  first_name: textFilterSchema.optional().describe("Contact first name."),
+  last_name: textFilterSchema.optional().describe("Contact last name."),
+  owner_id: z.coerce.number().int().positive().optional().describe("Contact owner user ID."),
+  created_by: z.coerce.number().int().positive().optional().describe("Creating user ID."),
+  ...contactMutationOptionalFieldsInputSchema,
+};
+
+const offLimitSlugListSchema = z.array(textFilterSchema).min(1).max(25);
+
+const markCandidateOffLimitInputSchema = {
+  candidate_slugs: offLimitSlugListSchema.describe("Candidate slugs to mark off-limit. Max 25."),
+  status_id: z.coerce.number().int().positive().describe("Off-limit status ID. Resolve with list_off_limit_statuses."),
+  end_date: offLimitEndDateSchema.describe("Off-limit end date in DD-MM-YYYY format."),
+  reason: z.string().trim().min(1).optional().describe("Off-limit reason."),
+};
+
+const markContactOffLimitInputSchema = {
+  contact_slugs: offLimitSlugListSchema.describe("Contact slugs to mark off-limit. Max 25."),
+  status_id: z.coerce.number().int().positive().describe("Off-limit status ID. Resolve with list_off_limit_statuses."),
+  end_date: offLimitEndDateSchema.describe("Off-limit end date in DD-MM-YYYY format."),
+  reason: z.string().trim().min(1).optional().describe("Off-limit reason."),
+};
+
+const markCompanyOffLimitInputSchema = {
+  company_slugs: offLimitSlugListSchema.describe("Company slugs to mark off-limit. Max 25."),
+  status_id: z.coerce.number().int().positive().describe("Off-limit status ID. Resolve with list_off_limit_statuses."),
+  end_date: offLimitEndDateSchema.describe("Off-limit end date in DD-MM-YYYY format."),
+  reason: z.string().trim().min(1).optional().describe("Off-limit reason."),
+  mark_contact_off_limit: booleanLikeSchema.describe(
+    "Whether Recruit CRM should also mark related contacts off-limit.",
+  ),
+  mark_candidate_off_limit: booleanLikeSchema.describe(
+    "Whether Recruit CRM should also mark related candidates off-limit.",
+  ),
+};
+
+const markRecordsAvailableInputSchema = {
+  record_type: markRecordsAvailableRecordTypeSchema.describe("Record type to mark available."),
+  slugs: offLimitSlugListSchema.describe("Record slugs to mark available. Max 25."),
+  mark_contact_available: booleanLikeSchema
+    .optional()
+    .describe("For record_type=company, whether Recruit CRM should also mark related contacts available."),
+  mark_candidate_available: booleanLikeSchema
+    .optional()
+    .describe("For record_type=company, whether Recruit CRM should also mark related candidates available."),
 };
 
 const listUsersInputSchema = {
@@ -353,7 +695,7 @@ const searchTasksInputSchema = {
   owner_id: textFilterSchema.optional().describe("Task owner id. Use this for 'my' task requests after resolving the Recruit CRM user id."),
   owner_name: textFilterSchema.optional().describe("Task owner name."),
   related_to: textFilterSchema.optional().describe("Related entity slug or id. Must be used with related_to_type."),
-  related_to_type: textFilterSchema.optional().describe("Related entity type. Must be used with related_to."),
+  related_to_type: taskRelatedToTypeSchema.optional().describe("Related entity type. Must be used with related_to."),
   starting_from: textFilterSchema.optional().describe("Task due-date range start."),
   starting_to: textFilterSchema.optional().describe("Task due-date range end."),
   title: textFilterSchema.optional().describe("Task title."),
@@ -396,6 +738,16 @@ const searchJobsInputSchema = {
   sort_order: z.enum(["asc", "desc"]).optional().describe("Sort order."),
   updated_from: textFilterSchema.optional().describe("Updated-on date range start."),
   updated_to: textFilterSchema.optional().describe("Updated-on date range end."),
+  custom_fields: z
+    .array(
+      z.object({
+        field_id: z.coerce.number().int().positive().describe("Job custom field id."),
+        filter_type: customFieldFilterTypeSchema.describe("Custom field filter type."),
+        filter_value: customFieldFilterValueSchema.optional().describe("Value for filter types that require it."),
+      }),
+    )
+    .optional()
+    .describe("Job custom field filters. Use field ids from the metadata tools."),
 };
 
 const getJobAssignedCandidatesInputSchema = {
@@ -407,8 +759,68 @@ const getJobAssignedCandidatesInputSchema = {
     .describe("Hiring stage id filter. Accepts a single id or comma-separated ids like 8 or 8,12."),
 };
 
+const listCandidateHiringStagesInputSchema = {
+  hiring_pipeline_id: z.coerce
+    .number()
+    .int()
+    .min(0)
+    .optional()
+    .describe(
+      "Hiring pipeline id. Defaults to 0 for the Master Hiring Pipeline, which can be used when only a hiring stage ID is needed and no job context is required.",
+    ),
+};
+
+const updateCandidateHiringStageInputSchema = {
+  candidate_slug: textFilterSchema.describe("Candidate slug."),
+  job_slug: textFilterSchema.describe("Job slug."),
+  status_id: z.coerce
+    .number()
+    .int()
+    .positive()
+    .describe(
+      "Candidate hiring stage id. Resolve with list_candidate_hiring_stages; use hiring_pipeline_id 0 for master stages or the job's hiring_pipeline_id for job-specific stages.",
+    ),
+  remark: textFilterSchema.optional().describe("Remark. Supports basic HTML/rich text."),
+  stage_date: textFilterSchema.describe("Updated date/time, preferably ISO 8601."),
+  updated_by: z.coerce.number().int().positive().describe("Recruit CRM user id updating the hiring stage."),
+  create_placement: booleanLikeSchema
+    .optional()
+    .describe("Create placement flag. Defaults to false; set true only when the user explicitly wants a placement created."),
+};
+
+const assignCandidateToJobInputSchema = {
+  candidate_slug: textFilterSchema.describe("Candidate slug."),
+  job_slug: textFilterSchema.describe("Job slug."),
+  updated_by: z.coerce.number().int().positive().describe("Recruit CRM user id assigning the candidate to the job."),
+};
+
+const pitchCandidateToContactInputSchema = {
+  candidate_slug: textFilterSchema.describe("Candidate slug."),
+  contact_slug: textFilterSchema.describe("Contact slug."),
+  created_by: z.coerce.number().int().positive().describe("Recruit CRM user id recording the pitch."),
+  allow_duplicate: z
+    .boolean()
+    .optional()
+    .describe("When true, create another pitch row even if this candidate is already pitched to this contact."),
+};
+
+const updateCandidatePitchStageInputSchema = {
+  candidate_slug: textFilterSchema.describe("Candidate slug."),
+  contact_slug: textFilterSchema.describe("Contact slug."),
+  status_id: z.coerce.number().int().positive().describe("Pitch status id. Resolve with list_pitch_stages."),
+  stage_date: textFilterSchema.describe("Updated pitch stage date/time, preferably ISO 8601."),
+  updated_by: z.coerce.number().int().positive().describe("Recruit CRM user id updating the pitch stage."),
+  remark: textFilterSchema.optional().describe("Remark text."),
+};
+
+const pitchEntityLookupInputSchema = {
+  entity_type: pitchEntityTypeSchema.describe("Entity type for the pitch lookup."),
+  entity_slug: textFilterSchema.describe("Candidate slug when entity_type=candidate, or contact slug when entity_type=contact."),
+};
+
 const searchCompaniesInputSchema = {
   page: z.coerce.number().int().min(1).optional().describe("Page number."),
+  limit: z.coerce.number().int().min(1).max(100).optional().describe("Records per page (max 100, default 100)."),
   company_name: textFilterSchema.optional().describe("Company name."),
   created_from: textFilterSchema.optional().describe("Created-on date range start."),
   created_to: textFilterSchema.optional().describe("Created-on date range end."),
@@ -422,10 +834,21 @@ const searchCompaniesInputSchema = {
   exact_search: booleanLikeSchema.optional().describe("Use exact search instead of partial match."),
   sort_by: z.enum(["createdon", "updatedon"]).optional().describe("Sort field."),
   sort_order: z.enum(["asc", "desc"]).optional().describe("Sort order."),
+  custom_fields: z
+    .array(
+      z.object({
+        field_id: z.coerce.number().int().positive().describe("Company custom field id."),
+        filter_type: customFieldFilterTypeSchema.describe("Custom field filter type."),
+        filter_value: customFieldFilterValueSchema.optional().describe("Value for filter types that require it."),
+      }),
+    )
+    .optional()
+    .describe("Company custom field filters. Use field ids from the metadata tools."),
 };
 
 const searchContactsInputSchema = {
   page: z.coerce.number().int().min(1).optional().describe("Page number."),
+  limit: z.coerce.number().int().min(1).max(100).optional().describe("Records per page (max 100, default 100)."),
   created_from: textFilterSchema.optional().describe("Created-on date range start."),
   created_to: textFilterSchema.optional().describe("Created-on date range end."),
   email: textFilterSchema.optional().describe("Contact email."),
@@ -449,12 +872,22 @@ const searchContactsInputSchema = {
     .describe(
       "Opt-in flag (default false). When true, each result also includes email, contact_number, and linkedin. Leave off for most requests; enable only when the user explicitly needs contact details, because it increases response size and exposes PII.",
     ),
+  custom_fields: z
+    .array(
+      z.object({
+        field_id: z.coerce.number().int().positive().describe("Contact custom field id."),
+        filter_type: customFieldFilterTypeSchema.describe("Custom field filter type."),
+        filter_value: customFieldFilterValueSchema.optional().describe("Value for filter types that require it."),
+      }),
+    )
+    .optional()
+    .describe("Contact custom field filters. Use field ids from the metadata tools."),
 };
 
 const searchHotlistsInputSchema = {
   page: z.coerce.number().int().min(1).optional().describe("Page number."),
   name: textFilterSchema.optional().describe("Hotlist name."),
-  shared: binaryNumberSchema.optional().describe("Shared with team flag. Use 1 for shared hotlists or 0 for private hotlists."),
+  shared: binaryNumberSchema.optional().describe("Shared with team flag. true for team-shared hotlists, false for private."),
   related_to_type: z
     .enum(["candidate", "company", "contact", "job"])
     .describe("Associated entity type for the hotlist."),
@@ -465,7 +898,7 @@ const createHotlistInputSchema = {
   related_to_type: z
     .enum(["candidate", "company", "contact", "job"])
     .describe("Associated entity type for the hotlist."),
-  shared: binaryNumberSchema.describe("Shared with team flag. Use 0 for private hotlists or 1 for shared hotlists."),
+  shared: binaryNumberSchema.describe("Shared with team flag. true for team-shared hotlists, false for private."),
   created_by: z.coerce.number().int().positive().describe("Recruit CRM user id creating the hotlist."),
 };
 
@@ -477,7 +910,7 @@ const searchMeetingsInputSchema = {
   owner_id: textFilterSchema.optional().describe("Meeting owner id. Use this for 'my' meeting requests after resolving the Recruit CRM user id."),
   owner_name: textFilterSchema.optional().describe("Meeting owner name."),
   related_to: textFilterSchema.optional().describe("Related entity slug or id. Must be used with related_to_type."),
-  related_to_type: textFilterSchema.optional().describe("Related entity type. Must be used with related_to."),
+  related_to_type: meetingRelatedToTypeSchema.optional().describe("Related entity type. Must be used with related_to."),
   starting_from: textFilterSchema.optional().describe("Meeting start date/time range start."),
   starting_to: textFilterSchema.optional().describe("Meeting start date/time range end."),
   title: textFilterSchema.optional().describe("Meeting title."),
@@ -485,7 +918,6 @@ const searchMeetingsInputSchema = {
   updated_to: textFilterSchema.optional().describe("Meeting updated-on date range end."),
 };
 
-const taskRelatedToTypeSchema = z.enum(["candidate", "company", "contact", "job", "deal"]);
 const taskReminderSchema = z
   .union([
     z.literal("-1"),
@@ -502,15 +934,15 @@ const taskReminderSchema = z
     z.literal(1440),
   ])
   .transform((value) => Number(value) as -1 | 0 | 15 | 30 | 60 | 1440);
-const createTaskAssociatedSlugsSchema = z.array(textFilterSchema).min(1);
-const createTaskCollaboratorIdsSchema = z.array(z.coerce.number().int().positive()).min(1);
+const createTaskAssociatedSlugsSchema = z.array(textFilterSchema).min(1).max(25);
+const createTaskCollaboratorIdsSchema = z.array(z.coerce.number().int().positive()).min(1).max(25);
 
 const createTaskInputSchema = {
   task_type_id: z.coerce
     .number()
     .int()
     .positive()
-    .describe("Recruit CRM task type id. Use list_task_types first and only pass an id returned by that tool."),
+    .describe("Recruit CRM task type id."),
   title: textFilterSchema.describe("Task title."),
   description: z
     .string()
@@ -524,39 +956,60 @@ const createTaskInputSchema = {
     .number()
     .int()
     .positive()
-    .describe("Recruit CRM user id assigned to own the task. Use list_users to resolve a known user name or email; ask if unknown."),
+    .describe("Recruit CRM user id assigned to own the task."),
   created_by: z.coerce
     .number()
     .int()
     .positive()
-    .describe("Recruit CRM user id creating the task. Often the same as owner_id; use list_users to resolve a known user name or email; ask if unknown."),
+    .describe("Recruit CRM user id creating the task. Often the same as owner_id."),
   related_to: textFilterSchema.optional().describe("Associated entity slug. Must be used with related_to_type."),
   related_to_type: taskRelatedToTypeSchema.optional().describe("Associated entity type. Must be used with related_to."),
   updated_by: z.coerce.number().int().positive().optional().describe("Recruit CRM user id updating the task."),
   associated_candidates: createTaskAssociatedSlugsSchema
     .optional()
-    .describe("Additional associated candidate slugs. Sent as a comma-separated API field."),
+    .describe("Additional associated candidate slugs. Max 25. Sent as a comma-separated API field."),
   associated_companies: createTaskAssociatedSlugsSchema
     .optional()
-    .describe("Additional associated company slugs. Sent as a comma-separated API field."),
+    .describe("Additional associated company slugs. Max 25. Sent as a comma-separated API field."),
   associated_contacts: createTaskAssociatedSlugsSchema
     .optional()
-    .describe("Additional associated contact slugs. Sent as a comma-separated API field."),
+    .describe("Additional associated contact slugs. Max 25. Sent as a comma-separated API field."),
   associated_jobs: createTaskAssociatedSlugsSchema
     .optional()
-    .describe("Additional associated job slugs. Sent as a comma-separated API field."),
+    .describe("Additional associated job slugs. Max 25. Sent as a comma-separated API field."),
   associated_deals: createTaskAssociatedSlugsSchema
     .optional()
-    .describe("Additional associated deal slugs. Sent as a comma-separated API field."),
+    .describe("Additional associated deal slugs. Max 25. Sent as a comma-separated API field."),
   collaborator_user_ids: createTaskCollaboratorIdsSchema
     .optional()
-    .describe("Collaborator user IDs. Sent to the Recruit CRM tasks API as the comma-separated collaborators field."),
+    .describe("Collaborator user IDs. Max 25. Sent to the Recruit CRM tasks API as the comma-separated collaborators field."),
   collaborator_team_ids: createTaskCollaboratorIdsSchema
     .optional()
-    .describe("Collaborator team IDs. Sent as a comma-separated API field."),
+    .describe("Collaborator team IDs. Max 25. Sent as a comma-separated API field."),
   enable_auto_populate_teams: booleanLikeSchema
     .optional()
     .describe("When true, Recruit CRM auto-populates teams for the owner_id user/account owner unless collaborator_team_ids is provided."),
+};
+
+const updateTaskInputSchema = {
+  task_id: z.coerce.number().int().positive().describe("Recruit CRM task id to update."),
+  task_type_id: createTaskInputSchema.task_type_id.optional(),
+  title: createTaskInputSchema.title.optional(),
+  description: createTaskInputSchema.description.optional(),
+  reminder: createTaskInputSchema.reminder.optional(),
+  start_date: createTaskInputSchema.start_date.optional(),
+  owner_id: createTaskInputSchema.owner_id.optional(),
+  updated_by: z.coerce.number().int().positive().describe("Recruit CRM user id updating the task."),
+  related_to: createTaskInputSchema.related_to,
+  related_to_type: createTaskInputSchema.related_to_type,
+  associated_candidates: createTaskInputSchema.associated_candidates,
+  associated_companies: createTaskInputSchema.associated_companies,
+  associated_contacts: createTaskInputSchema.associated_contacts,
+  associated_jobs: createTaskInputSchema.associated_jobs,
+  associated_deals: createTaskInputSchema.associated_deals,
+  collaborator_user_ids: createTaskInputSchema.collaborator_user_ids,
+  collaborator_team_ids: createTaskInputSchema.collaborator_team_ids,
+  enable_auto_populate_teams: createTaskInputSchema.enable_auto_populate_teams,
 };
 
 const searchNotesInputSchema = {
@@ -564,20 +1017,19 @@ const searchNotesInputSchema = {
   added_from: textFilterSchema.optional().describe("Note added-on date range start."),
   added_to: textFilterSchema.optional().describe("Note added-on date range end."),
   related_to: textFilterSchema.optional().describe("Related entity slug. Must be used with related_to_type."),
-  related_to_type: textFilterSchema.optional().describe("Related entity type. Must be used with related_to."),
+  related_to_type: noteRelatedToTypeSchema.optional().describe("Related entity type. Must be used with related_to."),
   updated_from: textFilterSchema.optional().describe("Note updated-on date range start."),
   updated_to: textFilterSchema.optional().describe("Note updated-on date range end."),
 };
 
-const noteRelatedToTypeSchema = z.enum(["candidate", "company", "contact", "job", "deal"]);
-const createNoteAssociatedSlugsSchema = z.array(textFilterSchema).min(1);
-const createNoteCollaboratorIdsSchema = z.array(z.coerce.number().int().positive()).min(1);
+const createNoteAssociatedSlugsSchema = z.array(textFilterSchema).min(1).max(25);
+const createNoteCollaboratorIdsSchema = z.array(z.coerce.number().int().positive()).min(1).max(25);
 
 const createNoteInputSchema = {
   note_type_id: z.coerce.number()
     .int()
     .positive()
-    .describe("Recruit CRM note type id. Use list_note_types first and only pass an id returned by that tool."),
+    .describe("Recruit CRM note type id."),
   description: z
     .string()
     .min(1)
@@ -587,39 +1039,56 @@ const createNoteInputSchema = {
   created_by: z.coerce.number()
     .int()
     .positive()
-    .describe("Recruit CRM user id creating the note. Use list_users to resolve a known user name or email; ask the user if unknown."),
+    .describe("Recruit CRM user id creating the note."),
   updated_by: z.coerce.number().int().positive().optional().describe("Recruit CRM user id updating the note."),
   associated_candidates: createNoteAssociatedSlugsSchema
     .optional()
-    .describe("Additional associated candidate slugs. Sent as a comma-separated API field."),
+    .describe("Additional associated candidate slugs. Max 25. Sent as a comma-separated API field."),
   associated_companies: createNoteAssociatedSlugsSchema
     .optional()
-    .describe("Additional associated company slugs. Sent as a comma-separated API field."),
+    .describe("Additional associated company slugs. Max 25. Sent as a comma-separated API field."),
   associated_contacts: createNoteAssociatedSlugsSchema
     .optional()
-    .describe("Additional associated contact slugs. Sent as a comma-separated API field."),
+    .describe("Additional associated contact slugs. Max 25. Sent as a comma-separated API field."),
   associated_jobs: createNoteAssociatedSlugsSchema
     .optional()
-    .describe("Additional associated job slugs. Sent as a comma-separated API field."),
+    .describe("Additional associated job slugs. Max 25. Sent as a comma-separated API field."),
   associated_deals: createNoteAssociatedSlugsSchema
     .optional()
-    .describe("Additional associated deal slugs. Sent as a comma-separated API field."),
+    .describe("Additional associated deal slugs. Max 25. Sent as a comma-separated API field."),
   collaborator_user_ids: createNoteCollaboratorIdsSchema
     .optional()
-    .describe("Collaborator user IDs. Sent as a comma-separated API field."),
+    .describe("Collaborator user IDs. Max 25. Sent as a comma-separated API field."),
   collaborator_team_ids: createNoteCollaboratorIdsSchema
     .optional()
-    .describe("Collaborator team IDs. Sent as a comma-separated API field."),
+    .describe("Collaborator team IDs. Max 25. Sent as a comma-separated API field."),
   enable_auto_populate_teams: booleanLikeSchema
     .optional()
     .describe("When true, Recruit CRM auto-populates teams for the created_by user/account owner unless collaborator_team_ids is provided."),
+};
+
+const updateNoteInputSchema = {
+  note_id: z.coerce.number().int().positive().describe("Recruit CRM note id to update."),
+  note_type_id: createNoteInputSchema.note_type_id.optional(),
+  description: createNoteInputSchema.description.optional(),
+  related_to: createNoteInputSchema.related_to.optional(),
+  related_to_type: createNoteInputSchema.related_to_type.optional(),
+  updated_by: z.coerce.number().int().positive().describe("Recruit CRM user id updating the note."),
+  associated_candidates: createNoteInputSchema.associated_candidates,
+  associated_companies: createNoteInputSchema.associated_companies,
+  associated_contacts: createNoteInputSchema.associated_contacts,
+  associated_jobs: createNoteInputSchema.associated_jobs,
+  associated_deals: createNoteInputSchema.associated_deals,
+  collaborator_user_ids: createNoteInputSchema.collaborator_user_ids,
+  collaborator_team_ids: createNoteInputSchema.collaborator_team_ids,
+  enable_auto_populate_teams: createNoteInputSchema.enable_auto_populate_teams,
 };
 
 const searchCallLogsInputSchema = {
   page: z.coerce.number().int().min(1).optional().describe("Page number."),
   call_type: z.enum(["CALL_OUTGOING", "CALL_INCOMING"]).optional().describe("Call direction filter."),
   related_to: textFilterSchema.optional().describe("Related entity slug. Must be used with related_to_type."),
-  related_to_type: textFilterSchema.optional().describe("Related entity type. Must be used with related_to."),
+  related_to_type: callLogRelatedToTypeSchema.optional().describe("Related entity type. Must be used with related_to."),
   starting_from: textFilterSchema.optional().describe("Call started-on date/time range start."),
   starting_to: textFilterSchema.optional().describe("Call started-on date/time range end."),
   updated_from: textFilterSchema.optional().describe("Call log updated-on date range start."),
@@ -630,10 +1099,13 @@ const nullableStringSchema = z.union([z.string(), z.null()]);
 const nullableNumberSchema = z.union([z.number(), z.null()]);
 const nullableBooleanSchema = z.union([z.boolean(), z.null()]);
 const nullableStringOrNumberSchema = z.union([z.string(), z.number(), z.null()]);
+const detailIdentifierSchema = z.union([z.string(), z.number(), z.null()]).optional();
+const recruitCrmServerInstructions =
+  "Recruit CRM records use different identifiers across workflows: candidates, jobs, companies, and contacts use slugs for exact follow-up actions, while users, teams, statuses, types, currencies, qualifications, pipelines, questions, and custom fields use numeric IDs. Recruit CRM app URL formats are https://app.recruitcrm.io/candidate/{slug}, https://app.recruitcrm.io/company/{slug}, https://app.recruitcrm.io/contact/{slug}, https://app.recruitcrm.io/job/{slug}, and https://app.recruitcrm.io/deal/{slug}. User-facing summary fields are names, labels, statuses, dates, recruiter/user names, and complete Recruit CRM app URLs when available. Candidate, contact, company, job, and deal names can be paired with their complete Recruit CRM app URLs as links when the corresponding slug is available. Slugs, numeric IDs, and URL templates are technical references for tool calls, exact disambiguation, troubleshooting, and auditability. Search and list tools return compact summaries; detail tools provide fuller records after a slug is known. Self-referential user scopes identify the authenticated Recruit CRM user, including I, me, my, mine, myself, assigned to me, owned by me, created by me, and updated by me. Group scopes such as we, our, us, and team depend on explicit supported team or user fields.";
 const myRecordsOwnerFilterGuidance =
-  "When the user says 'my', 'mine', or 'owned by me', resolve the Recruit CRM user id via list_users when needed and filter with owner_id; if the current user cannot be identified, ask for their Recruit CRM user name/email/id instead of guessing.";
+  "Filter by owner_id to scope results to a specific user; resolve user IDs with list_users.";
 const unsupportedOwnerFilterGuidance =
-  "This tool does not support owner filters; do not invent owner_id for 'my' requests. Use an owner-scoped upstream search when applicable, or explain the limitation.";
+  "Does not support owner filtering.";
 
 const candidateSummarySchema = z.object({
   slug: z.string(),
@@ -731,6 +1203,22 @@ const searchJobsOutputSchema = {
   jobs: z.array(jobSummarySchema),
 };
 
+const createJobOutputSchema = {
+  action: z.enum(["created", "updated"]),
+  job_slug: z.string(),
+  job_id: nullableNumberSchema,
+  name: nullableStringSchema,
+  company_slug: nullableStringSchema,
+  contact_slug: nullableStringSchema,
+  job_status: z.union([jobStatusSummarySchema, z.null()]),
+  owner: nullableNumberSchema,
+  enable_job_application_form: nullableBooleanSchema,
+  application_form_url: nullableStringSchema,
+  created_on: nullableStringSchema,
+  updated_on: nullableStringSchema,
+  view_url: nullableStringSchema,
+};
+
 const companyOffLimitSummarySchema = z.object({
   status_id: nullableNumberSchema,
   status_label: nullableStringSchema,
@@ -768,6 +1256,18 @@ const searchCompaniesOutputSchema = {
   companies: z.array(companySummarySchema),
 };
 
+const createCompanyOutputSchema = {
+  action: z.enum(["created", "updated"]),
+  company_slug: z.string(),
+  company_id: nullableNumberSchema,
+  company_name: nullableStringSchema,
+  website: nullableStringSchema,
+  owner: nullableNumberSchema,
+  created_on: nullableStringSchema,
+  updated_on: nullableStringSchema,
+  view_url: nullableStringSchema,
+};
+
 const contactSummarySchema = z.object({
   slug: z.string(),
   first_name: nullableStringSchema,
@@ -788,6 +1288,20 @@ const searchContactsOutputSchema = {
   returned_count: z.number().int().min(0),
   has_more: z.boolean(),
   contacts: z.array(contactSummarySchema),
+};
+
+const createContactOutputSchema = {
+  action: z.enum(["created", "updated"]),
+  contact_slug: z.string(),
+  contact_id: nullableNumberSchema,
+  first_name: nullableStringSchema,
+  last_name: nullableStringSchema,
+  designation: nullableStringSchema,
+  company_slug: nullableStringSchema,
+  owner: nullableNumberSchema,
+  created_on: nullableStringSchema,
+  updated_on: nullableStringSchema,
+  view_url: nullableStringSchema,
 };
 
 const hotlistSummarySchema = z.object({
@@ -825,6 +1339,103 @@ const userSummarySchema = z.object({
 const listUsersOutputSchema = {
   returned_count: z.number().int().min(0),
   users: z.array(userSummarySchema),
+};
+
+const paginatedMetadataOutputFields = {
+  page: z.number().int().min(1),
+  returned_count: z.number().int().min(0),
+  total_count: z.number().int().min(0),
+  has_more: z.boolean(),
+};
+
+const teamUserSummarySchema = z.object({
+  id: nullableNumberSchema,
+  first_name: nullableStringSchema,
+  last_name: nullableStringSchema,
+  email: nullableStringSchema.optional(),
+  contact_number: nullableStringSchema.optional(),
+  avatar: nullableStringSchema.optional(),
+});
+
+const teamSummarySchema = z.object({
+  team_id: nullableNumberSchema,
+  team_name: nullableStringSchema,
+  users: z.array(z.union([z.number(), teamUserSummarySchema])),
+});
+
+const listTeamsOutputSchema = {
+  ...paginatedMetadataOutputFields,
+  teams: z.array(teamSummarySchema),
+};
+
+const candidateQuestionSummarySchema = z.object({
+  id: nullableNumberSchema,
+  question: nullableStringSchema,
+});
+
+const listCandidateQuestionsOutputSchema = {
+  ...paginatedMetadataOutputFields,
+  candidate_questions: z.array(candidateQuestionSummarySchema),
+};
+
+const hiringPipelineSummarySchema = z.object({
+  hiring_pipeline_id: nullableNumberSchema,
+  name: nullableStringSchema,
+});
+
+const listHiringPipelinesOutputSchema = {
+  ...paginatedMetadataOutputFields,
+  hiring_pipelines: z.array(hiringPipelineSummarySchema),
+};
+
+const languageSummarySchema = z.object({
+  language_id: nullableNumberSchema,
+  code: nullableStringSchema,
+  language_name: nullableStringSchema,
+});
+
+const languageProficiencySummarySchema = z.object({
+  proficiency_id: z.number().int().positive(),
+  label: z.string(),
+});
+
+const listLanguagesAndProficienciesOutputSchema = {
+  ...paginatedMetadataOutputFields,
+  languages: z.array(languageSummarySchema),
+  proficiencies: z.array(languageProficiencySummarySchema),
+};
+
+const currencySummarySchema = z.object({
+  currency_id: nullableNumberSchema,
+  code: nullableStringSchema,
+  country: nullableStringSchema,
+  currency: nullableStringSchema,
+  symbol: nullableStringSchema,
+});
+
+const listCurrenciesOutputSchema = {
+  ...paginatedMetadataOutputFields,
+  currencies: z.array(currencySummarySchema),
+};
+
+const qualificationSummarySchema = z.object({
+  qualification_id: nullableNumberSchema,
+  label: nullableStringSchema,
+});
+
+const listQualificationsOutputSchema = {
+  ...paginatedMetadataOutputFields,
+  qualifications: z.array(qualificationSummarySchema),
+};
+
+const xmlJobboardSummarySchema = z.object({
+  id: nullableNumberSchema,
+  label: nullableStringSchema,
+});
+
+const listXmlJobboardsOutputSchema = {
+  default_xml_feeds: z.array(xmlJobboardSummarySchema),
+  custom_xml_feeds: z.array(xmlJobboardSummarySchema),
 };
 
 const createHotlistOutputSchema = {
@@ -1006,10 +1617,8 @@ const meetingReminderSchema = z
     z.literal(1440),
   ])
   .transform((value) => Number(value) as -1 | 0 | 15 | 30 | 60 | 120 | 1440);
-const createMeetingAssociatedSlugsSchema = z.array(textFilterSchema).min(1);
-const createMeetingCollaboratorIdsSchema = z.array(z.coerce.number().int().positive()).min(1);
-const meetingRelatedToTypeSchema = z.enum(["candidate", "company", "contact", "job", "deal"]);
-
+const createMeetingAssociatedSlugsSchema = z.array(textFilterSchema).min(1).max(25);
+const createMeetingCollaboratorIdsSchema = z.array(z.coerce.number().int().positive()).min(1).max(25);
 const createMeetingInputSchema = {
   title: textFilterSchema.describe("Meeting title."),
   reminder: meetingReminderSchema.describe(
@@ -1021,59 +1630,86 @@ const createMeetingInputSchema = {
     .number()
     .int()
     .positive()
-    .describe("Recruit CRM user id assigned to own the meeting. Use list_users to resolve a known user name or email; ask if unknown."),
+    .describe("Recruit CRM user id assigned to own the meeting."),
   created_by: z.coerce
     .number()
     .int()
     .positive()
-    .describe("Recruit CRM user id creating the meeting. Often the same as owner_id; use list_users to resolve a known user name or email; ask if unknown."),
+    .describe("Recruit CRM user id creating the meeting. Often the same as owner_id."),
   meeting_type_id: z.coerce
     .number()
     .int()
     .positive()
     .optional()
-    .describe("Recruit CRM meeting type id. Use list_meeting_types first and only pass an id returned by that tool."),
+    .describe("Recruit CRM meeting type id."),
   description: z.string().min(1).optional().describe("Meeting description."),
   address: z.string().min(1).optional().describe("Meeting address or video call link."),
   related_to: textFilterSchema.optional().describe("Associated entity slug. Must be used with related_to_type."),
   related_to_type: meetingRelatedToTypeSchema.optional().describe("Associated entity type. Must be used with related_to."),
   attendee_contacts: createMeetingAssociatedSlugsSchema
     .optional()
-    .describe("Contact slugs attending the meeting. Sent as a comma-separated API field."),
+    .describe("Contact slugs attending the meeting. Max 25. Sent as a comma-separated API field."),
   attendee_candidates: createMeetingAssociatedSlugsSchema
     .optional()
-    .describe("Candidate slugs attending the meeting. Sent as a comma-separated API field."),
+    .describe("Candidate slugs attending the meeting. Max 25. Sent as a comma-separated API field."),
   attendee_users: createMeetingCollaboratorIdsSchema
     .optional()
-    .describe("User IDs attending the meeting. Sent as a comma-separated API field."),
+    .describe("User IDs attending the meeting. Max 25. Sent as a comma-separated API field."),
   updated_by: z.coerce.number().int().positive().optional().describe("Recruit CRM user id updating the meeting."),
   associated_candidates: createMeetingAssociatedSlugsSchema
     .optional()
-    .describe("Additional associated candidate slugs. Sent as a comma-separated API field."),
+    .describe("Additional associated candidate slugs. Max 25. Sent as a comma-separated API field."),
   associated_companies: createMeetingAssociatedSlugsSchema
     .optional()
-    .describe("Additional associated company slugs. Sent as a comma-separated API field."),
+    .describe("Additional associated company slugs. Max 25. Sent as a comma-separated API field."),
   associated_contacts: createMeetingAssociatedSlugsSchema
     .optional()
-    .describe("Additional associated contact slugs. Sent as a comma-separated API field."),
+    .describe("Additional associated contact slugs. Max 25. Sent as a comma-separated API field."),
   associated_jobs: createMeetingAssociatedSlugsSchema
     .optional()
-    .describe("Additional associated job slugs. Sent as a comma-separated API field."),
+    .describe("Additional associated job slugs. Max 25. Sent as a comma-separated API field."),
   associated_deals: createMeetingAssociatedSlugsSchema
     .optional()
-    .describe("Additional associated deal slugs. Sent as a comma-separated API field."),
+    .describe("Additional associated deal slugs. Max 25. Sent as a comma-separated API field."),
   do_not_send_calendar_invites: booleanLikeSchema
     .optional()
-    .describe("When true (default), calendar invites are NOT sent to attendees. Set to false only when the user explicitly requests sending invites."),
+    .describe("When true (default), calendar invites are not sent to attendees. Set to false to send external calendar invites."),
   enable_auto_populate_teams: booleanLikeSchema
     .optional()
     .describe("When true (default), Recruit CRM auto-populates teams for the owner_id user/account owner unless collaborator_team_ids is provided."),
   collaborator_user_ids: createMeetingCollaboratorIdsSchema
     .optional()
-    .describe("Collaborator user IDs. Sent as a comma-separated API field."),
+    .describe("Collaborator user IDs. Max 25. Sent as a comma-separated API field."),
   collaborator_team_ids: createMeetingCollaboratorIdsSchema
     .optional()
-    .describe("Collaborator team IDs. Sent as a comma-separated API field."),
+    .describe("Collaborator team IDs. Max 25. Sent as a comma-separated API field."),
+};
+
+const updateMeetingInputSchema = {
+  meeting_id: z.coerce.number().int().positive().describe("Recruit CRM meeting id to update."),
+  title: createMeetingInputSchema.title.optional(),
+  reminder: createMeetingInputSchema.reminder.optional(),
+  start_date: createMeetingInputSchema.start_date.optional(),
+  end_date: createMeetingInputSchema.end_date.optional(),
+  owner_id: createMeetingInputSchema.owner_id.optional(),
+  meeting_type_id: createMeetingInputSchema.meeting_type_id,
+  description: createMeetingInputSchema.description,
+  address: createMeetingInputSchema.address,
+  related_to: createMeetingInputSchema.related_to,
+  related_to_type: createMeetingInputSchema.related_to_type,
+  attendee_contacts: createMeetingInputSchema.attendee_contacts,
+  attendee_candidates: createMeetingInputSchema.attendee_candidates,
+  attendee_users: createMeetingInputSchema.attendee_users,
+  updated_by: z.coerce.number().int().positive().describe("Recruit CRM user id updating the meeting."),
+  associated_candidates: createMeetingInputSchema.associated_candidates,
+  associated_companies: createMeetingInputSchema.associated_companies,
+  associated_contacts: createMeetingInputSchema.associated_contacts,
+  associated_jobs: createMeetingInputSchema.associated_jobs,
+  associated_deals: createMeetingInputSchema.associated_deals,
+  do_not_send_calendar_invites: createMeetingInputSchema.do_not_send_calendar_invites,
+  enable_auto_populate_teams: createMeetingInputSchema.enable_auto_populate_teams,
+  collaborator_user_ids: createMeetingInputSchema.collaborator_user_ids,
+  collaborator_team_ids: createMeetingInputSchema.collaborator_team_ids,
 };
 
 const createMeetingOutputSchema = {
@@ -1193,6 +1829,80 @@ const searchCallLogsOutputSchema = {
   call_logs: z.array(callLogSummarySchema),
 };
 
+const listCallTypesOutputSchema = {
+  returned_count: z.number().int().min(0),
+  call_types: z.array(callLogTypeSummarySchema),
+};
+
+const createCallLogAssociatedSlugsSchema = z.array(textFilterSchema).min(1).max(25);
+const createCallLogCollaboratorIdsSchema = z.array(z.coerce.number().int().positive()).min(1).max(25);
+
+const createCallLogInputSchema = {
+  call_type: z.enum(["CALL_OUTGOING", "CALL_INCOMING"]).describe("Call direction: CALL_OUTGOING or CALL_INCOMING."),
+  custom_call_type_id: z.coerce.number().int().positive().describe("Recruit CRM custom call type id."),
+  call_started_on: textFilterSchema.describe("Call start date-time, preferably ISO 8601 (e.g. 2026-05-20T10:30:00.000000Z)."),
+  related_to_type: callLogRelatedToTypeSchema.describe("Associated entity type. Must be candidate, contact, or company. Must be used with related_to."),
+  created_by: z.coerce.number().int().positive().describe("Recruit CRM user id creating the call log."),
+  updated_by: z.coerce.number().int().positive().describe("Recruit CRM user id updating the call log. Often the same as created_by."),
+  contact_number: textFilterSchema.optional().describe("Contact phone number for the call."),
+  call_notes: z.string().min(1).optional().describe("Notes from the call."),
+  related_to: textFilterSchema.optional().describe("Associated entity slug. Must be used with related_to_type."),
+  duration: textFilterSchema.optional().describe("Call duration. Supported formats: '1h 2m 10s', '1hr 20min 30sec', '5:30:50', or total seconds (e.g. '3020'). Response always returns duration in seconds."),
+  associated_candidates: createCallLogAssociatedSlugsSchema.optional().describe("Additional associated candidate slugs. Max 25. Sent as a comma-separated API field."),
+  associated_contacts: createCallLogAssociatedSlugsSchema.optional().describe("Additional associated contact slugs. Max 25. Sent as a comma-separated API field."),
+  associated_companies: createCallLogAssociatedSlugsSchema.optional().describe("Additional associated company slugs. Max 25. Sent as a comma-separated API field."),
+  associated_jobs: createCallLogAssociatedSlugsSchema.optional().describe("Additional associated job slugs. Max 25. Sent as a comma-separated API field."),
+  associated_deals: createCallLogAssociatedSlugsSchema.optional().describe("Additional associated deal slugs. Max 25. Sent as a comma-separated API field."),
+  collaborator_user_ids: createCallLogCollaboratorIdsSchema.optional().describe("Collaborator user IDs. Max 25. Sent as a comma-separated API field."),
+  collaborator_team_ids: createCallLogCollaboratorIdsSchema.optional().describe("Collaborator team IDs. Max 25. Sent as a comma-separated API field."),
+  enable_auto_populate_teams: booleanLikeSchema.optional().describe("When true, Recruit CRM auto-populates teams for the created_by user/account owner unless collaborator_team_ids is provided."),
+};
+
+const updateCallLogInputSchema = {
+  call_log_id: z.coerce.number().int().positive().describe("Recruit CRM call log id to update."),
+  call_type: createCallLogInputSchema.call_type.optional(),
+  custom_call_type_id: createCallLogInputSchema.custom_call_type_id.optional(),
+  call_started_on: createCallLogInputSchema.call_started_on.optional(),
+  related_to_type: createCallLogInputSchema.related_to_type.optional(),
+  updated_by: z.coerce.number().int().positive().describe("Recruit CRM user id updating the call log."),
+  contact_number: createCallLogInputSchema.contact_number,
+  call_notes: createCallLogInputSchema.call_notes,
+  related_to: createCallLogInputSchema.related_to,
+  duration: createCallLogInputSchema.duration,
+  associated_candidates: createCallLogInputSchema.associated_candidates,
+  associated_contacts: createCallLogInputSchema.associated_contacts,
+  associated_companies: createCallLogInputSchema.associated_companies,
+  associated_jobs: createCallLogInputSchema.associated_jobs,
+  associated_deals: createCallLogInputSchema.associated_deals,
+  collaborator_user_ids: createCallLogInputSchema.collaborator_user_ids,
+  collaborator_team_ids: createCallLogInputSchema.collaborator_team_ids,
+  enable_auto_populate_teams: createCallLogInputSchema.enable_auto_populate_teams,
+};
+
+const createCallLogOutputSchema = {
+  call_log_id: nullableNumberSchema,
+  call_type: nullableStringSchema,
+  custom_call_type: z.union([callLogTypeSummarySchema, z.null()]),
+  call_started_on: nullableStringSchema,
+  contact_number: nullableStringSchema,
+  call_notes: nullableStringSchema,
+  related_to: nullableStringSchema,
+  related_to_type: nullableStringSchema,
+  related_to_view_url: nullableStringSchema,
+  duration: nullableStringOrNumberSchema,
+  associated_candidates: z.array(z.string()),
+  associated_contacts: z.array(z.string()),
+  associated_companies: z.array(z.string()),
+  associated_jobs: z.array(z.string()),
+  associated_deals: z.array(z.string()),
+  created_on: nullableStringSchema,
+  updated_on: nullableStringSchema,
+  created_by: nullableNumberSchema,
+  updated_by: nullableNumberSchema,
+  collaborator_users: z.array(z.number()),
+  collaborator_teams: z.array(z.number()),
+};
+
 const candidateJobAssignmentHiringStageHistoryItemSchema = z.object({
   job_slug: nullableStringSchema,
   job_name: nullableStringSchema,
@@ -1241,20 +1951,82 @@ const hiringStageSummarySchema = z.object({
   label: nullableStringSchema,
 });
 
-const listCandidateHiringStagesInputSchema = {
-  hiring_pipeline_id: z.coerce
-    .number()
-    .int()
-    .min(0)
-    .optional()
-    .describe(
-      "Hiring pipeline id. Defaults to 0 for the Master Hiring Pipeline, which can be used when only a hiring stage ID is needed and no job context is required.",
-    ),
-};
-
 const listCandidateHiringStagesOutputSchema = {
   returned_count: z.number().int().min(0),
   stages: z.array(hiringStageSummarySchema),
+};
+
+const pitchStageSummarySchema = z.object({
+  status_id: nullableNumberSchema,
+  label: nullableStringSchema,
+});
+
+const listPitchStagesOutputSchema = {
+  returned_count: z.number().int().min(0),
+  stages: z.array(pitchStageSummarySchema),
+};
+
+const listJobStatusesOutputSchema = {
+  returned_count: z.number().int().min(0),
+  statuses: z.array(jobStatusSummarySchema),
+};
+
+const listContactStagesOutputSchema = {
+  returned_count: z.number().int().min(0),
+  stages: z.array(
+    z.object({
+      stage_id: nullableNumberSchema,
+      label: nullableStringSchema,
+    }),
+  ),
+};
+
+const listOffLimitStatusesOutputSchema = {
+  returned_count: z.number().int().min(0),
+  statuses: z.array(
+    z.object({
+      id: nullableNumberSchema,
+      label: nullableStringSchema,
+      sequence_no: nullableNumberSchema,
+      default: z.union([z.boolean(), z.null()]),
+    }),
+  ),
+};
+
+const markCandidateOffLimitOutputSchema = {
+  candidate_slugs: z.array(z.string()),
+  requested_count: z.number().int().min(0),
+  status_id: nullableNumberSchema,
+  end_date: nullableStringSchema,
+  reason: nullableStringSchema,
+  remark: nullableStringSchema,
+};
+
+const markContactOffLimitOutputSchema = {
+  contact_slugs: z.array(z.string()),
+  requested_count: z.number().int().min(0),
+  status_id: nullableNumberSchema,
+  end_date: nullableStringSchema,
+  reason: nullableStringSchema,
+  remark: nullableStringSchema,
+};
+
+const markCompanyOffLimitOutputSchema = {
+  company_slugs: z.array(z.string()),
+  requested_count: z.number().int().min(0),
+  status_id: nullableNumberSchema,
+  end_date: nullableStringSchema,
+  reason: nullableStringSchema,
+  remark: nullableStringSchema,
+};
+
+const markRecordsAvailableOutputSchema = {
+  record_type: markRecordsAvailableRecordTypeSchema,
+  slugs: z.array(z.string()),
+  requested_count: z.number().int().min(0),
+  mark_contact_available: z.union([z.boolean(), z.null()]),
+  mark_candidate_available: z.union([z.boolean(), z.null()]),
+  remark: nullableStringSchema,
 };
 
 const updateCandidateHiringStageOutputSchema = {
@@ -1272,39 +2044,93 @@ const updateCandidateHiringStageOutputSchema = {
 
 const assignCandidateToJobOutputSchema = updateCandidateHiringStageOutputSchema;
 
-const updateCandidateHiringStageInputSchema = {
-  candidate_slug: textFilterSchema.describe("Candidate slug."),
-  job_slug: textFilterSchema.describe("Job slug."),
-  status_id: z.coerce
-    .number()
-    .int()
-    .positive()
-    .describe(
-      "Candidate hiring stage id. Resolve with list_candidate_hiring_stages first; use hiring_pipeline_id 0 for master stages or the job's hiring_pipeline_id for job-specific stages.",
-    ),
-  remark: textFilterSchema.optional().describe("Remark. Supports basic HTML/rich text."),
-  stage_date: textFilterSchema.describe("Updated date/time, preferably ISO 8601."),
-  updated_by: z.coerce.number().int().positive().describe("Recruit CRM user id updating the hiring stage."),
-  create_placement: booleanLikeSchema
-    .optional()
-    .describe("Create placement flag. Defaults to false; set true only when the user explicitly wants a placement created."),
+const pitchActionOutputSchema = {
+  candidate_slug: nullableStringSchema,
+  contact_slug: nullableStringSchema,
+  status_id: nullableNumberSchema,
+  status_label: nullableStringSchema,
+  remark: nullableStringSchema,
+  stage_date: nullableStringSchema,
+  created_on: nullableStringSchema,
+  created_by: nullableNumberSchema,
+  updated_on: nullableStringSchema,
+  updated_by: nullableNumberSchema,
 };
 
-const assignCandidateToJobInputSchema = {
-  candidate_slug: textFilterSchema.describe("Candidate slug."),
-  job_slug: textFilterSchema.describe("Job slug."),
-  updated_by: z.coerce.number().int().positive().describe("Recruit CRM user id assigning the candidate to the job."),
-};
+const pitchRecordSummarySchema = z.object({
+  candidate_slug: nullableStringSchema,
+  contact_slug: nullableStringSchema,
+  status_id: nullableNumberSchema,
+  status_label: nullableStringSchema,
+  remark: nullableStringSchema,
+  stage_date: nullableStringSchema,
+  contact_title: nullableStringSchema,
+  contact_name: nullableStringSchema,
+  candidate_name: nullableStringSchema,
+  candidate_position: nullableStringSchema,
+  created_on: nullableStringSchema,
+  created_by: nullableNumberSchema,
+  updated_on: nullableStringSchema,
+  updated_by: nullableNumberSchema,
+});
 
-const listJobStatusesOutputSchema = {
+const pitchHistoryRecordSummarySchema = pitchRecordSummarySchema.omit({
+  created_by: true,
+});
+
+const pitchHistoryOutputSchema = {
+  entity_type: pitchEntityTypeSchema,
+  entity_slug: z.string(),
   returned_count: z.number().int().min(0),
-  statuses: z.array(jobStatusSummarySchema),
+  history: z.array(pitchHistoryRecordSummarySchema),
 };
 
-const candidateDetailOutputSchema = z.object({}).passthrough();
-const companyDetailOutputSchema = z.object({}).passthrough();
-const contactDetailOutputSchema = z.object({}).passthrough();
-const jobDetailOutputSchema = z.object({}).passthrough();
+const pitchedRecordsOutputSchema = {
+  entity_type: pitchEntityTypeSchema,
+  entity_slug: z.string(),
+  returned_count: z.number().int().min(0),
+  records: z.array(pitchRecordSummarySchema),
+};
+
+const candidateDetailOutputSchema = z
+  .object({
+    id: detailIdentifierSchema,
+    slug: detailIdentifierSchema,
+    custom_fields: z.array(z.unknown()).optional(),
+    work_history: z.array(z.unknown()).optional(),
+    education_history: z.array(z.unknown()).optional(),
+  })
+  .passthrough();
+const companyDetailOutputSchema = z
+  .object({
+    id: detailIdentifierSchema,
+    slug: detailIdentifierSchema,
+    custom_fields: z.array(z.unknown()).optional(),
+  })
+  .passthrough();
+const contactDetailOutputSchema = z
+  .object({
+    id: detailIdentifierSchema,
+    slug: detailIdentifierSchema,
+    company_slug: detailIdentifierSchema,
+    custom_fields: z.array(z.unknown()).optional(),
+  })
+  .passthrough();
+const jobDetailOutputSchema = z
+  .object({
+    id: detailIdentifierSchema,
+    slug: detailIdentifierSchema,
+    company_slug: detailIdentifierSchema,
+    contact_slug: detailIdentifierSchema,
+    secondary_contact_slugs: z.array(z.unknown()).nullish(),
+    job_questions: z.array(z.unknown()).optional(),
+    custom_fields: z.array(z.unknown()).optional(),
+    targetcompanies: z.array(z.unknown()).optional(),
+    collaborator_users: z.array(z.unknown()).optional(),
+    collaborator_teams: z.array(z.unknown()).optional(),
+    xml_feeds: z.array(z.unknown()).optional(),
+  })
+  .passthrough();
 
 const getCandidateDetailsInputSchema = {
   candidate_slugs: z
@@ -1328,6 +2154,14 @@ const getContactDetailsInputSchema = {
     .min(1)
     .max(10)
     .describe("Contact slugs to fetch. Max 10 per call. Duplicates are ignored."),
+};
+
+const getJobDetailsInputSchema = {
+  job_slugs: z
+    .array(textFilterSchema)
+    .min(1)
+    .max(10)
+    .describe("Job slugs to fetch. Max 10 per call. Duplicates are ignored."),
 };
 
 const candidateDetailsOutputSchema = {
@@ -1372,6 +2206,20 @@ const contactDetailsOutputSchema = {
   ),
 };
 
+const jobDetailsOutputSchema = {
+  requested_count: z.number().int().min(0),
+  successful_count: z.number().int().min(0),
+  failed_count: z.number().int().min(0),
+  jobs: z.array(jobDetailOutputSchema),
+  errors: z.array(
+    z.object({
+      slug: z.string(),
+      error: z.string(),
+      status_code: z.union([z.number().int(), z.null()]),
+    }),
+  ),
+};
+
 const candidateCustomFieldSummarySchema = z.object({
   field_id: z.number().int().positive(),
   field_name: z.string(),
@@ -1388,6 +2236,8 @@ const listCandidateCustomFieldsOutputSchema = {
   fields: z.array(candidateCustomFieldSummarySchema),
 };
 
+const listCustomFieldsOutputSchema = listCandidateCustomFieldsOutputSchema;
+
 const candidateCustomFieldDetailOutputSchema = {
   field_id: z.number().int().positive(),
   field_name: z.string(),
@@ -1397,6 +2247,8 @@ const candidateCustomFieldDetailOutputSchema = {
   filter_value_required_for: z.array(customFieldFilterTypeSchema),
   option_values: z.union([z.array(z.string()), z.null()]),
 };
+
+const customFieldDetailOutputSchema = candidateCustomFieldDetailOutputSchema;
 
 const customFieldDependencyEntrySchema = z.object({
   parent_field_id: z.number().int().positive(),
@@ -1416,6 +2268,239 @@ const getCustomFieldDependenciesOutputSchema = {
   dependencies: z.array(customFieldDependencyEntrySchema),
 };
 
+const prepareClientBriefInputSchema = {
+  contact_slug: textFilterSchema
+    .optional()
+    .describe("Client contact slug to prepare for. Provide contact_slug, company_slug, or both."),
+  company_slug: textFilterSchema
+    .optional()
+    .describe("Client company slug to prepare for. Provide company_slug, contact_slug, or both."),
+  lookback_days: z.coerce
+    .number()
+    .int()
+    .min(1)
+    .max(365)
+    .optional()
+    .describe("Activity lookback window in days. Default 30."),
+  max_open_jobs: z.coerce
+    .number()
+    .int()
+    .min(1)
+    .max(10)
+    .optional()
+    .describe("Maximum open jobs to include. Default 5."),
+  max_related_contacts: z.coerce
+    .number()
+    .int()
+    .min(1)
+    .max(25)
+    .optional()
+    .describe("Maximum related company/job contacts to resolve. Default 15."),
+  max_assigned_candidates_per_job: z.coerce
+    .number()
+    .int()
+    .min(1)
+    .max(100)
+    .optional()
+    .describe("Maximum assigned candidates to inspect per included job. Default 50."),
+  feedback_wait_days_threshold: z.coerce
+    .number()
+    .int()
+    .min(1)
+    .max(90)
+    .optional()
+    .describe("Days in a client-facing stage before flagging a candidate as waiting on client feedback. Default 3."),
+  include_activity: booleanLikeSchema
+    .optional()
+    .describe("Include notes / meetings / tasks / call-log activity summaries. Default true."),
+  include_pipeline_summary: booleanLikeSchema
+    .optional()
+    .describe("Include assigned-candidate pipeline summaries for each open job. Default true."),
+  include_contact_info: booleanLikeSchema
+    .optional()
+    .describe(
+      "Opt-in flag. When true, contact summaries can include email, contact_number, and linkedin. Default false.",
+    ),
+};
+
+const prepareClientBriefCompanySchema = z.object({
+  slug: nullableStringSchema,
+  name: nullableStringSchema,
+  owner: nullableNumberSchema,
+  owner_name: nullableStringSchema,
+  city: nullableStringSchema,
+  state: nullableStringSchema,
+  country: nullableStringSchema,
+  website: nullableStringSchema,
+  marked_as_off_limit: nullableBooleanSchema,
+  view_url: nullableStringSchema,
+});
+
+const prepareClientBriefJobContactSchema = z.object({
+  slug: z.string(),
+  name: nullableStringSchema,
+  designation: nullableStringSchema,
+  company_slug: nullableStringSchema,
+  owner: nullableNumberSchema,
+  owner_name: nullableStringSchema,
+  view_url: z.string(),
+  email: nullableStringSchema.optional(),
+  contact_number: nullableStringSchema.optional(),
+  linkedin: nullableStringSchema.optional(),
+});
+
+const prepareClientBriefContactSchema = prepareClientBriefJobContactSchema.extend({
+  relationships: z.array(z.string()),
+  job_slugs: z.array(z.string()),
+  last_activity_at: nullableStringSchema,
+});
+
+const prepareClientBriefActivitySchema = z.object({
+  entity_type: z.enum(["company", "contact", "job"]),
+  entity_slug: z.string(),
+  notes_count: z.number().int().min(0),
+  meetings_count: z.number().int().min(0),
+  tasks_count: z.number().int().min(0),
+  call_logs_count: z.number().int().min(0),
+  last_note_at: nullableStringSchema,
+  last_meeting_at: nullableStringSchema,
+  last_call_at: nullableStringSchema,
+  next_task_due_at: nullableStringSchema,
+  last_touch_at: nullableStringSchema,
+});
+
+const prepareClientBriefPitchRecordSchema = z.object({
+  candidate_slug: nullableStringSchema,
+  contact_slug: nullableStringSchema,
+  status_id: nullableNumberSchema,
+  status_label: nullableStringSchema,
+  remark: nullableStringSchema,
+  stage_date: nullableStringSchema,
+  contact_title: nullableStringSchema,
+  contact_name: nullableStringSchema,
+  candidate_name: nullableStringSchema,
+  candidate_position: nullableStringSchema,
+  created_on: nullableStringSchema,
+  created_by: nullableNumberSchema,
+  updated_on: nullableStringSchema,
+  updated_by: nullableNumberSchema,
+});
+
+const prepareClientBriefPipelineSchema = z.object({
+  assigned_count: z.number().int().min(0),
+  active_count: z.number().int().min(0),
+  terminal_count: z.number().int().min(0),
+  stage_counts: z.array(
+    z.object({
+      stage_id: nullableNumberSchema,
+      label: z.string(),
+      count: z.number().int().min(0),
+      median_days_in_stage: nullableNumberSchema,
+    }),
+  ),
+  bottleneck: z.union([
+    z.object({
+      stage_label: z.string(),
+      count: z.number().int().min(0),
+      median_days_in_stage: nullableNumberSchema,
+      reason: z.string(),
+    }),
+    z.null(),
+  ]),
+  candidates_waiting_on_client: z.array(
+    z.object({
+      candidate_slug: z.string(),
+      name: nullableStringSchema,
+      current_stage: nullableStringSchema,
+      days_in_current_stage: nullableNumberSchema,
+      last_activity_at: nullableStringSchema,
+    }),
+  ),
+  has_more_assigned_candidates: z.boolean(),
+});
+
+const prepareClientBriefJobSchema = z.object({
+  slug: z.string(),
+  name: nullableStringSchema,
+  status_label: nullableStringSchema,
+  days_open: nullableNumberSchema,
+  number_of_openings: nullableNumberSchema,
+  owner: nullableNumberSchema,
+  owner_name: nullableStringSchema,
+  company_slug: nullableStringSchema,
+  contact_slug: nullableStringSchema,
+  secondary_contact_slugs: z.array(z.string()),
+  hiring_pipeline_id: nullableNumberSchema,
+  view_url: z.string(),
+  primary_contact: z.union([prepareClientBriefJobContactSchema, z.null()]),
+  secondary_contacts: z.array(prepareClientBriefJobContactSchema),
+  pipeline_summary: z.union([prepareClientBriefPipelineSchema, z.null()]),
+  activity: z.union([prepareClientBriefActivitySchema, z.null()]),
+  risks: z.array(z.string()),
+  talking_points: z.array(z.string()),
+});
+
+const prepareClientBriefOutputSchema = {
+  brief_type: z.literal("client"),
+  scope: z.object({
+    input_contact_slug: nullableStringSchema,
+    input_company_slug: nullableStringSchema,
+    resolved_company_slug: nullableStringSchema,
+    lookback_days: z.number().int().min(1),
+    generated_at: z.string(),
+  }),
+  client: z.object({
+    company: z.union([prepareClientBriefCompanySchema, z.null()]),
+    primary_contact: z.union([prepareClientBriefContactSchema, z.null()]),
+    related_contacts: z.array(prepareClientBriefContactSchema),
+  }),
+  account_health: z.object({
+    open_jobs_count: z.number().int().min(0),
+    jobs_returned: z.number().int().min(0),
+    active_candidates_count: z.number().int().min(0),
+    candidates_waiting_on_client_count: z.number().int().min(0),
+    last_touch_at: nullableStringSchema,
+    next_task_due_at: nullableStringSchema,
+    relationship_risk: z.enum(["low", "medium", "high"]),
+    relationship_risk_reasons: z.array(z.string()),
+  }),
+  jobs: z.array(prepareClientBriefJobSchema),
+  pitched_candidates: z.union([
+    z.object({
+      returned_count: z.number().int().min(0),
+      records: z.array(prepareClientBriefPitchRecordSchema),
+    }),
+    z.null(),
+  ]),
+  activity: z.array(prepareClientBriefActivitySchema),
+  suggested_talking_points: z.array(z.string()),
+  recommended_followups: z.array(
+    z.object({
+      action: z.enum(["create_task", "create_note", "review_pipeline"]),
+      reason: z.string(),
+      related_to_type: z.enum(["company", "contact", "job"]),
+      related_to: z.string(),
+    }),
+  ),
+  coverage: z.object({
+    jobs_checked: z.number().int().min(0),
+    jobs_truncated: z.boolean(),
+    related_contacts_checked: z.number().int().min(0),
+    activity_entities_checked: z.number().int().min(0),
+    assigned_candidate_pages_checked: z.number().int().min(0),
+    assignments_truncated: z.boolean(),
+    included_contact_info: z.boolean(),
+  }),
+  errors: z.array(
+    z.object({
+      source: z.enum(["contact", "company", "contacts", "jobs", "assignments", "activity", "pitch", "users"]),
+      slug: z.string().optional(),
+      message: z.string(),
+      status_code: nullableNumberSchema,
+    }),
+  ),
+};
+
 const ANALYZE_JOB_PIPELINE_DEFAULTS = {
   startPage: 1,
   idleDaysThreshold: 14,
@@ -1428,7 +2513,7 @@ const ANALYZE_JOB_PIPELINE_DEFAULTS = {
 
 const analyzeJobPipelineInputSchema = {
   job_slug: textFilterSchema.describe(
-    "Job slug to analyze (e.g. 16734937272590003vEM). Required. If the user only gave a job name or title, FIRST call search_jobs to resolve the slug.",
+    "Job slug to analyze (e.g. 16734937272590003vEM). Resolve from search_jobs if only a job name is available.",
   ),
   start_page: z.coerce
     .number()
@@ -1478,7 +2563,7 @@ const analyzeJobPipelineInputSchema = {
   include_time_metrics: booleanLikeSchema
     .optional()
     .describe(
-      "Compute time-to-hire, time-to-stage, and time-to-first-action metrics. Default false. When false, the tool relies on stage_date from the assignments endpoint for days_in_current_stage (cheap: ~7 API calls). When true, the tool fetches per-candidate history for capped active + Placed candidates (typically +25–55 calls), enabling the time_metrics block. Set true only when the user explicitly asks for time-to-hire / time-to-stage / time-to-X.",
+      "Compute time-to-hire, time-to-stage, and time-to-first-action metrics. Default false. When false, relies on stage_date for days_in_current_stage (~7 API calls). When true, fetches per-candidate history for capped active and Placed candidates (typically +25–55 extra calls), populating the time_metrics block.",
     ),
 };
 
@@ -1503,11 +2588,11 @@ const analyzeJobPipelineOutputSchema = {
     owner: nullableNumberSchema,
     owner_name: nullableStringSchema,
     company_slug: nullableStringSchema,
-    hiring_pipeline_id: nullableNumberSchema,
     created_on: nullableStringSchema,
     days_open: nullableNumberSchema,
     number_of_openings: nullableNumberSchema,
     view_url: z.string(),
+    hiring_pipeline_id: nullableNumberSchema,
   }),
   pipeline: z.object({
     window: z.object({
@@ -1611,15 +2696,26 @@ const analyzeJobPipelineOutputSchema = {
 export type ServerDependencies = {
   config?: AppConfig;
   transport?: HttpTransport;
+  serverMeta?: {
+    icons?: Array<{ src: string; mimeType?: string; sizes?: string[] }>;
+    websiteUrl?: string;
+  };
 };
 
 export function createRecruitCrmServer(dependencies: ServerDependencies = {}): McpServer {
   const config = dependencies.config ?? loadConfig();
   const client = new RecruitCrmClient(config, dependencies.transport);
-  const server = new McpServer({
-    name: "Recruit CRM MCP Server",
-    version: "0.7.0",
-  });
+  const server = new McpServer(
+    {
+      name: "Recruit CRM",
+      version: "0.8.0",
+      icons: dependencies.serverMeta?.icons,
+      websiteUrl: dependencies.serverMeta?.websiteUrl,
+    },
+    {
+      instructions: recruitCrmServerInstructions,
+    },
+  );
 
   server.registerTool(
     "search_candidates",
@@ -1643,7 +2739,7 @@ export function createRecruitCrmServer(dependencies: ServerDependencies = {}): M
     {
       title: "List Candidates",
       description:
-        "List all candidates in the account, most-recently updated first. Use this for unfiltered 'show recent candidates' requests; use search_candidates when you have filter criteria like name, owner, date, or 'my candidates' ownership. Returns compact summaries with slug values for candidate detail lookup or app links like https://app.recruitcrm.io/candidate/{slug}.",
+        "Lists all candidates in the account, most-recently updated first. Returns compact summaries with slug values for candidate detail lookup. Use search_candidates for filtered queries.",
       inputSchema: listCandidatesInputSchema,
       outputSchema: searchCandidatesOutputSchema,
       annotations: {
@@ -1658,19 +2754,35 @@ export function createRecruitCrmServer(dependencies: ServerDependencies = {}): M
   server.registerTool(
     "create_candidate",
     {
-      title: "Create or Update Candidate",
+      title: "Create Candidate",
       description:
-        "Create or update one Recruit CRM candidate, then optionally create up to 10 latest work history rows and up to 10 latest education history rows using the resulting candidate slug. This tool modifies Recruit CRM data and should only be used when explicitly requested. Before calling create_candidate, always run search_candidates using any provided email, contact_number, or linkedin URL to check for duplicates. If a duplicate is found, ask the user whether to create a duplicate or update the existing candidate. To create a confirmed duplicate, pass allow_duplicate=true. To update, pass existing_candidate_slug; this uses POST /candidates/{candidate_slug} with the same candidate payload. Use list_users to resolve owner_id, created_by, and updated_by (owner_id and created_by are required on create); use search_companies to resolve current_organization_slug; if the user mentions any custom field, always call list_candidate_custom_fields first to get the field_id, then call get_candidate_custom_field_details for any dropdown or multiselect field to confirm valid option values — never guess field IDs or option values.",
+        "Creates one Recruit CRM candidate, then optionally creates up to 10 work history rows and 10 education history rows. Requires at least one of first_name or last_name, plus owner_id and created_by. Checks duplicates by email, contact_number, or linkedin unless allow_duplicate=true; duplicate errors include candidate_slug and candidate_id when available. Resolve user IDs with list_users, currency_id with list_currencies, language_skills with list_languages_and_proficiencies, company slugs with search_companies, and custom field IDs with list_custom_fields. The resume field accepts a publicly accessible HTTPS direct download URL or a base64-encoded file string. File-type custom fields accept a direct download URL only. Returns a compact summary with the candidate slug and partial-success details for history operations.",
       inputSchema: createCandidateInputSchema,
       outputSchema: createCandidateOutputSchema,
       annotations: {
         readOnlyHint: false,
         destructiveHint: true,
-        idempotentHint: false,
         openWorldHint: false,
       },
     },
     async (args) => formatResult(await executeCreateCandidate(client, args as CreateCandidateInput)),
+  );
+
+  server.registerTool(
+    "update_candidate",
+    {
+      title: "Update Candidate",
+      description:
+        "Updates one existing Recruit CRM candidate by candidate_slug, then optionally creates up to 10 work history rows and 10 education history rows. Requires candidate_slug, updated_by, and at least one of first_name or last_name. Resolve user IDs with list_users, currency_id with list_currencies, language_skills with list_languages_and_proficiencies, company slugs with search_companies, and custom field IDs with list_custom_fields. The resume field accepts a publicly accessible HTTPS direct download URL or a base64-encoded file string. File-type custom fields accept a direct download URL only. Returns a compact summary with the candidate slug and partial-success details for history operations.",
+      inputSchema: updateCandidateInputSchema,
+      outputSchema: createCandidateOutputSchema,
+      annotations: {
+        readOnlyHint: false,
+        destructiveHint: true,
+        openWorldHint: false,
+      },
+    },
+    async (args) => formatResult(await executeUpdateCandidate(client, args as UpdateCandidateInput)),
   );
 
   server.registerTool(
@@ -1695,7 +2807,7 @@ export function createRecruitCrmServer(dependencies: ServerDependencies = {}): M
     {
       title: "List Jobs",
       description:
-        "List all jobs in the account, most-recently updated first. Use this for unfiltered 'show recent jobs' or 'show all jobs' requests; use search_jobs when you have filter criteria like company, status, name, owner, or 'my jobs' ownership. Returns compact summaries with slug, company_slug, contact_slug, and hiring_pipeline_id values; use hiring_pipeline_id with list_candidate_hiring_stages for job-specific stage lookup.",
+        "Lists all jobs in the account, most-recently updated first. Returns compact summaries with slug, company_slug, contact_slug, and hiring_pipeline_id. Use search_jobs for filtered queries; use hiring_pipeline_id with list_candidate_hiring_stages for job-specific stage lookup.",
       inputSchema: listJobsInputSchema,
       outputSchema: searchJobsOutputSchema,
       annotations: {
@@ -1705,6 +2817,40 @@ export function createRecruitCrmServer(dependencies: ServerDependencies = {}): M
       },
     },
     async (args) => formatResult(await executeListJobs(client, args)),
+  );
+
+  server.registerTool(
+    "create_job",
+    {
+      title: "Create Job",
+      description:
+        "Creates one Recruit CRM job. Requires name, company_slug, contact_slug, enable_job_application_form, owner_id, and created_by. job_description_text and currency_id are optional per live API verification. Use list_users for user IDs, search_companies or list_companies for company slugs, search_contacts or list_contacts for contact slugs, list_job_statuses for job status IDs, list_currencies for currency_id, list_qualifications for qualification_id, list_teams for collaborator_team_ids, list_candidate_questions for job_questions, list_xml_jobboards for xml_feeds, list_hiring_pipelines for hiring_pipeline_id, and list_custom_fields for entity_type=jobs. Defaults enable_auto_populate_teams to true and show_company_logo to 2. Returns a compact summary with the job slug.",
+      inputSchema: createJobInputSchema,
+      outputSchema: createJobOutputSchema,
+      annotations: {
+        readOnlyHint: false,
+        destructiveHint: true,
+        openWorldHint: true,
+      },
+    },
+    async (args) => formatResult(await executeCreateJob(client, args as CreateJobInput)),
+  );
+
+  server.registerTool(
+    "update_job",
+    {
+      title: "Update Job",
+      description:
+        "Updates one existing Recruit CRM job by job_slug. Requires job_slug, updated_by, and at least one field to update. Use list_users for user IDs, search_companies or list_companies for company slugs, search_contacts or list_contacts for contact slugs, list_job_statuses for job status IDs, list_currencies for currency_id, list_qualifications for qualification_id, list_teams for collaborator_team_ids, list_candidate_questions for job_questions, list_xml_jobboards for xml_feeds, list_hiring_pipelines for hiring_pipeline_id, and list_custom_fields for entity_type=jobs. Returns a compact summary with the job slug.",
+      inputSchema: updateJobInputSchema,
+      outputSchema: createJobOutputSchema,
+      annotations: {
+        readOnlyHint: false,
+        destructiveHint: true,
+        openWorldHint: true,
+      },
+    },
+    async (args) => formatResult(await executeUpdateJob(client, args as UpdateJobInput)),
   );
 
   server.registerTool(
@@ -1729,7 +2875,7 @@ export function createRecruitCrmServer(dependencies: ServerDependencies = {}): M
     {
       title: "List Companies",
       description:
-        "List all companies in the account, most-recently updated first. Use this for unfiltered 'show recent companies' or 'show all companies' requests; use search_companies when you have filter criteria like name, owner, or 'my companies' ownership. Returns compact summaries with slug and contact_slugs values for app links.",
+        "Lists all companies in the account, most-recently updated first. Returns compact summaries with slug and contact_slugs values. Use search_companies for filtered queries.",
       inputSchema: listCompaniesInputSchema,
       outputSchema: searchCompaniesOutputSchema,
       annotations: {
@@ -1742,11 +2888,45 @@ export function createRecruitCrmServer(dependencies: ServerDependencies = {}): M
   );
 
   server.registerTool(
+    "create_company",
+    {
+      title: "Create Company",
+      description:
+        "Creates one Recruit CRM company. Requires company_name, owner_id, and created_by. Checks duplicates by company_name unless allow_duplicate=true. Resolve user IDs with list_users and custom field IDs with list_custom_fields for entity_type=companies. Returns a compact summary with the company slug.",
+      inputSchema: createCompanyInputSchema,
+      outputSchema: createCompanyOutputSchema,
+      annotations: {
+        readOnlyHint: false,
+        destructiveHint: true,
+        openWorldHint: false,
+      },
+    },
+    async (args) => formatResult(await executeCreateCompany(client, args as CreateCompanyInput)),
+  );
+
+  server.registerTool(
+    "update_company",
+    {
+      title: "Update Company",
+      description:
+        "Updates one existing Recruit CRM company by company_slug. Requires company_slug and updated_by. Resolve user IDs with list_users and custom field IDs with list_custom_fields for entity_type=companies. Returns a compact summary with the company slug.",
+      inputSchema: updateCompanyInputSchema,
+      outputSchema: createCompanyOutputSchema,
+      annotations: {
+        readOnlyHint: false,
+        destructiveHint: true,
+        openWorldHint: false,
+      },
+    },
+    async (args) => formatResult(await executeUpdateCompany(client, args as UpdateCompanyInput)),
+  );
+
+  server.registerTool(
     "search_contacts",
     {
       title: "Search Contacts",
       description:
-        `Search Recruit CRM contacts with filters and return compact summaries for large result sets. ${myRecordsOwnerFilterGuidance} At least one real filter is required: sort_by, sort_order, page, exact_search, and include_contact_info do not count by themselves. Use list_contacts for unfiltered 'show recent contacts' or 'show all contacts' requests.`,
+        `Search Recruit CRM contacts with filters and return compact summaries for large result sets. ${myRecordsOwnerFilterGuidance} At least one real filter is required; sort_by, sort_order, page, exact_search, and include_contact_info do not count independently.`,
       inputSchema: searchContactsInputSchema,
       outputSchema: searchContactsOutputSchema,
       annotations: {
@@ -1763,7 +2943,7 @@ export function createRecruitCrmServer(dependencies: ServerDependencies = {}): M
     {
       title: "List Contacts",
       description:
-        "List all contacts in the account, most-recently updated first. Use this for unfiltered 'show recent contacts' or 'show all contacts' requests; use search_contacts when you have filter criteria like name, company, owner, date, or 'my contacts' ownership. Returns compact summaries with slug values for contact detail lookup or app links like https://app.recruitcrm.io/contact/{slug}.",
+        "Lists all contacts in the account, most-recently updated first. Returns compact summaries with slug values for contact detail lookup. Use search_contacts for filtered queries.",
       inputSchema: listContactsInputSchema,
       outputSchema: searchContactsOutputSchema,
       annotations: {
@@ -1776,11 +2956,45 @@ export function createRecruitCrmServer(dependencies: ServerDependencies = {}): M
   );
 
   server.registerTool(
+    "create_contact",
+    {
+      title: "Create Contact",
+      description:
+        "Creates one Recruit CRM contact. Requires first_name, last_name, owner_id, and created_by. Resolve user IDs with list_users, company slugs with search_companies or list_companies, stage IDs with list_contact_stages, and custom field IDs with list_custom_fields for entity_type=contacts. Returns a compact summary with the contact slug.",
+      inputSchema: createContactInputSchema,
+      outputSchema: createContactOutputSchema,
+      annotations: {
+        readOnlyHint: false,
+        destructiveHint: true,
+        openWorldHint: false,
+      },
+    },
+    async (args) => formatResult(await executeCreateContact(client, args as CreateContactInput)),
+  );
+
+  server.registerTool(
+    "update_contact",
+    {
+      title: "Update Contact",
+      description:
+        "Updates one existing Recruit CRM contact by contact_slug. Requires contact_slug and at least one field to update. Resolve user IDs with list_users, company slugs with search_companies or list_companies, stage IDs with list_contact_stages, and custom field IDs with list_custom_fields for entity_type=contacts. Returns a compact summary with the contact slug.",
+      inputSchema: updateContactInputSchema,
+      outputSchema: createContactOutputSchema,
+      annotations: {
+        readOnlyHint: false,
+        destructiveHint: true,
+        openWorldHint: false,
+      },
+    },
+    async (args) => formatResult(await executeUpdateContact(client, args as UpdateContactInput)),
+  );
+
+  server.registerTool(
     "list_users",
     {
       title: "List Users",
       description:
-        "List Recruit CRM users and return compact user summaries with id, first_name, last_name, and status. Enable include_teams only when the user asks for team membership. Enable include_contact_info only when the user explicitly needs email or phone.",
+        "Lists all Recruit CRM users and returns compact summaries of each user's id, first_name, last_name, and status. User IDs from this tool are used as owner_id, created_by, updated_by, attendee_users, and collaborator_user_ids on candidates, jobs, companies, contacts, tasks, meetings, notes, and call logs. Enable include_teams to include team memberships per user; enable include_contact_info to also include email and contact_number. Returns all users in a single response with no pagination.",
       inputSchema: listUsersInputSchema,
       outputSchema: listUsersOutputSchema,
       annotations: {
@@ -1790,6 +3004,125 @@ export function createRecruitCrmServer(dependencies: ServerDependencies = {}): M
       },
     },
     async (args) => formatResult(await executeListUsers(client, args)),
+  );
+
+  server.registerTool(
+    "list_teams",
+    {
+      title: "List Teams",
+      description:
+        "Lists Recruit CRM teams with MCP-side pagination. By default returns team IDs, names, and user IDs. Pass expand=user to return user summaries; include_user_contact_info=true adds user email, contact_number, and avatar.",
+      inputSchema: listTeamsInputSchema,
+      outputSchema: listTeamsOutputSchema,
+      annotations: {
+        readOnlyHint: true,
+        destructiveHint: false,
+        openWorldHint: false,
+      },
+    },
+    async (args) => formatResult(await executeListTeams(client, args)),
+  );
+
+  server.registerTool(
+    "list_candidate_questions",
+    {
+      title: "List Candidate Questions",
+      description:
+        "Lists Recruit CRM candidate questions with MCP-side pagination. Returns compact id and question rows for resolving candidate question IDs.",
+      inputSchema: metadataListInputSchema,
+      outputSchema: listCandidateQuestionsOutputSchema,
+      annotations: {
+        readOnlyHint: true,
+        destructiveHint: false,
+        openWorldHint: false,
+      },
+    },
+    async (args) => formatResult(await executeListCandidateQuestions(client, args)),
+  );
+
+  server.registerTool(
+    "list_hiring_pipelines",
+    {
+      title: "List Hiring Pipelines",
+      description:
+        "Lists Recruit CRM hiring pipelines with MCP-side pagination. Returns hiring_pipeline_id and name rows for selecting a job hiring pipeline or listing candidate hiring stages.",
+      inputSchema: metadataListInputSchema,
+      outputSchema: listHiringPipelinesOutputSchema,
+      annotations: {
+        readOnlyHint: true,
+        destructiveHint: false,
+        openWorldHint: false,
+      },
+    },
+    async (args) => formatResult(await executeListHiringPipelines(client, args)),
+  );
+
+  server.registerTool(
+    "list_languages_and_proficiencies",
+    {
+      title: "List Languages And Proficiencies",
+      description:
+        "Lists Recruit CRM languages with MCP-side pagination and returns the standard proficiency IDs. Use language_id and proficiency_id for candidate language_skills.",
+      inputSchema: metadataListInputSchema,
+      outputSchema: listLanguagesAndProficienciesOutputSchema,
+      annotations: {
+        readOnlyHint: true,
+        destructiveHint: false,
+        openWorldHint: false,
+      },
+    },
+    async (args) => formatResult(await executeListLanguagesAndProficiencies(client, args)),
+  );
+
+  server.registerTool(
+    "list_currencies",
+    {
+      title: "List Currencies",
+      description:
+        "Lists Recruit CRM currencies with MCP-side pagination. Returns currency_id, code, country, currency, and symbol rows for candidate and job currency_id fields.",
+      inputSchema: metadataListInputSchema,
+      outputSchema: listCurrenciesOutputSchema,
+      annotations: {
+        readOnlyHint: true,
+        destructiveHint: false,
+        openWorldHint: false,
+      },
+    },
+    async (args) => formatResult(await executeListCurrencies(client, args)),
+  );
+
+  server.registerTool(
+    "list_qualifications",
+    {
+      title: "List Qualifications",
+      description:
+        "Lists Recruit CRM qualifications with MCP-side pagination. Returns qualification_id and label rows for job qualification_id fields.",
+      inputSchema: metadataListInputSchema,
+      outputSchema: listQualificationsOutputSchema,
+      annotations: {
+        readOnlyHint: true,
+        destructiveHint: false,
+        openWorldHint: false,
+      },
+    },
+    async (args) => formatResult(await executeListQualifications(client, args)),
+  );
+
+  server.registerTool(
+    "list_xml_jobboards",
+    {
+      title: "List XML Jobboards",
+      description:
+        "Lists Recruit CRM XML job boards for jobs. Returns default_xml_feeds and custom_xml_feeds rows with id and label for job xml_feeds.",
+      inputSchema: {},
+      outputSchema: listXmlJobboardsOutputSchema,
+      annotations: {
+        readOnlyHint: true,
+        destructiveHint: false,
+        openWorldHint: false,
+      },
+    },
+    async () => formatResult(await executeListXmlJobboards(client)),
   );
 
   server.registerTool(
@@ -1814,13 +3147,12 @@ export function createRecruitCrmServer(dependencies: ServerDependencies = {}): M
     {
       title: "Create Hotlist",
       description:
-        "Create one Recruit CRM hotlist. This tool modifies data in Recruit CRM and should only be used when the user explicitly asks to create a hotlist. Requires created_by as a Recruit CRM user id; use list_users only when a user name must be resolved to an id. Use shared: 0 unless the user explicitly asks to share the hotlist with the team.",
+        "Creates one Recruit CRM hotlist. Requires name, related_to_type, shared (true for team-shared, false for private), and created_by user id. Resolve user IDs with list_users.",
       inputSchema: createHotlistInputSchema,
       outputSchema: createHotlistOutputSchema,
       annotations: {
         readOnlyHint: false,
-        destructiveHint: false,
-        idempotentHint: false,
+        destructiveHint: true,
         openWorldHint: false,
       },
     },
@@ -1832,13 +3164,12 @@ export function createRecruitCrmServer(dependencies: ServerDependencies = {}): M
     {
       title: "Add Records to Hotlist",
       description:
-        "Add up to 10 Recruit CRM record slugs to an existing hotlist. This tool modifies data in Recruit CRM and should only be used when the user explicitly asks to add records to a specific hotlist. Executes sequentially, ignores duplicate input slugs, and returns partial success details instead of failing the whole batch.",
+        "Adds up to 10 Recruit CRM record slugs to an existing hotlist. Duplicate input slugs are ignored. Returns partial-success details with added_slugs and an errors array for any failed additions.",
       inputSchema: addRecordsToHotlistInputSchema,
       outputSchema: addRecordsToHotlistOutputSchema,
       annotations: {
         readOnlyHint: false,
-        destructiveHint: false,
-        idempotentHint: false,
+        destructiveHint: true,
         openWorldHint: false,
       },
     },
@@ -1867,7 +3198,7 @@ export function createRecruitCrmServer(dependencies: ServerDependencies = {}): M
     {
       title: "List Task Types",
       description:
-        "List Recruit CRM task types and return compact id/label rows. Use this before create_task to resolve a requested task type label to task_type_id; if no type is requested, choose the most relevant available type before creating.",
+        "Lists Recruit CRM task types, returning compact id/label rows. Use task_type_id in create_task.",
       inputSchema: {},
       outputSchema: listTaskTypesOutputSchema,
       annotations: {
@@ -1884,17 +3215,33 @@ export function createRecruitCrmServer(dependencies: ServerDependencies = {}): M
     {
       title: "Create Task",
       description:
-        "Create one Recruit CRM task. This tool modifies data in Recruit CRM and should only be used when explicitly requested. Use list_task_types first to resolve task_type_id; if the user requested a specific type, create only when that type exists. Requires owner_id for the assigned user and created_by for the creating user; use list_users to resolve known names or emails, otherwise ask. Requires description and supports basic HTML/rich text. Returns compact output without the related entity payload.",
+        "Creates one Recruit CRM task. Requires task_type_id, title, description, reminder, start_date, owner_id, and created_by. Resolve task type IDs with list_task_types and user IDs with list_users. Description supports basic HTML/rich text. Returns a compact task summary.",
       inputSchema: createTaskInputSchema,
       outputSchema: createTaskOutputSchema,
       annotations: {
         readOnlyHint: false,
-        destructiveHint: false,
-        idempotentHint: false,
+        destructiveHint: true,
         openWorldHint: false,
       },
     },
     async (args) => formatResult(await executeCreateTask(client, args)),
+  );
+
+  server.registerTool(
+    "update_task",
+    {
+      title: "Update Task",
+      description:
+        "Updates one existing Recruit CRM task by task_id. Requires task_id, updated_by, and at least one field to update. Resolve task type IDs with list_task_types and user IDs with list_users. Description supports basic HTML/rich text. Returns a compact task summary.",
+      inputSchema: updateTaskInputSchema,
+      outputSchema: createTaskOutputSchema,
+      annotations: {
+        readOnlyHint: false,
+        destructiveHint: true,
+        openWorldHint: false,
+      },
+    },
+    async (args) => formatResult(await executeUpdateTask(client, args as UpdateTaskInput)),
   );
 
   server.registerTool(
@@ -1919,7 +3266,7 @@ export function createRecruitCrmServer(dependencies: ServerDependencies = {}): M
     {
       title: "List Meeting Types",
       description:
-        "List Recruit CRM meeting types and return compact id/label rows. Use this before create_meeting to resolve a requested meeting type label to meeting_type_id; if no type is requested, choose the most relevant available type before creating.",
+        "Lists Recruit CRM meeting types, returning compact id/label rows. Use meeting_type_id in create_meeting.",
       inputSchema: {},
       outputSchema: listMeetingTypesOutputSchema,
       annotations: {
@@ -1936,17 +3283,33 @@ export function createRecruitCrmServer(dependencies: ServerDependencies = {}): M
     {
       title: "Create Meeting",
       description:
-        "Create one Recruit CRM meeting. This tool modifies data in Recruit CRM and should only be used when explicitly requested. Requires title, reminder, start_date, end_date, owner_id, and created_by. Use list_meeting_types first to resolve meeting_type_id if a type is needed. Use list_users to resolve owner_id and created_by from known names or emails; ask if unknown. Calendar invites are NOT sent by default — only set do_not_send_calendar_invites to false when the user explicitly requests sending invites. Returns compact output without the related entity payload.",
+        "Creates one Recruit CRM meeting. Requires title, reminder, start_date, end_date, owner_id, and created_by. Resolve meeting type IDs with list_meeting_types and user IDs with list_users. Calendar invites are not sent by default; set do_not_send_calendar_invites to false to send external calendar invites to attendees. Returns a compact meeting summary.",
       inputSchema: createMeetingInputSchema,
       outputSchema: createMeetingOutputSchema,
       annotations: {
         readOnlyHint: false,
         destructiveHint: true,
-        idempotentHint: false,
         openWorldHint: true,
       },
     },
     async (args) => formatResult(await executeCreateMeeting(client, args)),
+  );
+
+  server.registerTool(
+    "update_meeting",
+    {
+      title: "Update Meeting",
+      description:
+        "Updates one existing Recruit CRM meeting by meeting_id. Requires meeting_id, updated_by, and at least one field to update. Resolve meeting type IDs with list_meeting_types and user IDs with list_users. Calendar invites are not sent by default; set do_not_send_calendar_invites to false to send external calendar invites to attendees. Returns a compact meeting summary.",
+      inputSchema: updateMeetingInputSchema,
+      outputSchema: createMeetingOutputSchema,
+      annotations: {
+        readOnlyHint: false,
+        destructiveHint: true,
+        openWorldHint: true,
+      },
+    },
+    async (args) => formatResult(await executeUpdateMeeting(client, args as UpdateMeetingInput)),
   );
 
   server.registerTool(
@@ -1971,7 +3334,7 @@ export function createRecruitCrmServer(dependencies: ServerDependencies = {}): M
     {
       title: "List Note Types",
       description:
-        "List Recruit CRM note types and return compact id/label rows. Use this before create_note to resolve a requested note type label to note_type_id; if no type is requested, choose the most relevant available type before creating.",
+        "Lists Recruit CRM note types, returning compact id/label rows. Use note_type_id in create_note.",
       inputSchema: {},
       outputSchema: listNoteTypesOutputSchema,
       annotations: {
@@ -1988,17 +3351,33 @@ export function createRecruitCrmServer(dependencies: ServerDependencies = {}): M
     {
       title: "Create Note",
       description:
-        "Create one Recruit CRM note. This tool modifies data in Recruit CRM and should only be used when explicitly requested. Use list_note_types first to resolve note_type_id; if the user requested a specific type, create only when that type exists. Requires created_by as a Recruit CRM user id; use list_users to resolve a known user name or email, otherwise ask. Supports basic HTML/rich text in description and returns compact output without the related entity payload.",
+        "Creates one Recruit CRM note. Requires note_type_id, description, related_to, related_to_type, and created_by user id. Resolve note type IDs with list_note_types and user IDs with list_users. Description supports basic HTML/rich text. Returns a compact note summary.",
       inputSchema: createNoteInputSchema,
       outputSchema: createNoteOutputSchema,
       annotations: {
         readOnlyHint: false,
-        destructiveHint: false,
-        idempotentHint: false,
+        destructiveHint: true,
         openWorldHint: false,
       },
     },
     async (args) => formatResult(await executeCreateNote(client, args)),
+  );
+
+  server.registerTool(
+    "update_note",
+    {
+      title: "Update Note",
+      description:
+        "Updates one existing Recruit CRM note by note_id. Requires note_id, updated_by, and at least one field to update. Resolve note type IDs with list_note_types and user IDs with list_users. Description supports basic HTML/rich text. Returns a compact note summary.",
+      inputSchema: updateNoteInputSchema,
+      outputSchema: createNoteOutputSchema,
+      annotations: {
+        readOnlyHint: false,
+        destructiveHint: true,
+        openWorldHint: false,
+      },
+    },
+    async (args) => formatResult(await executeUpdateNote(client, args as UpdateNoteInput)),
   );
 
   server.registerTool(
@@ -2019,11 +3398,62 @@ export function createRecruitCrmServer(dependencies: ServerDependencies = {}): M
   );
 
   server.registerTool(
+    "list_call_types",
+    {
+      title: "List Call Types",
+      description:
+        "Lists Recruit CRM custom call types, returning compact id/label rows. Use custom_call_type_id in create_call_log.",
+      inputSchema: {},
+      outputSchema: listCallTypesOutputSchema,
+      annotations: {
+        readOnlyHint: true,
+        destructiveHint: false,
+        openWorldHint: false,
+      },
+    },
+    async () => formatResult(await executeListCallTypes(client)),
+  );
+
+  server.registerTool(
+    "create_call_log",
+    {
+      title: "Create Call Log",
+      description:
+        "Creates one Recruit CRM call log. Requires call_type, custom_call_type_id, call_started_on, related_to_type, created_by, and updated_by. Resolve call type IDs with list_call_types and user IDs with list_users. related_to_type must be candidate, contact, or company. Returns a compact call log summary with duration in seconds.",
+      inputSchema: createCallLogInputSchema,
+      outputSchema: createCallLogOutputSchema,
+      annotations: {
+        readOnlyHint: false,
+        destructiveHint: true,
+        openWorldHint: false,
+      },
+    },
+    async (args) => formatResult(await executeCreateCallLog(client, args as CreateCallLogInput)),
+  );
+
+  server.registerTool(
+    "update_call_log",
+    {
+      title: "Update Call Log",
+      description:
+        "Updates one existing Recruit CRM call log by call_log_id. Requires call_log_id, updated_by, and at least one field to update. Resolve call type IDs with list_call_types and user IDs with list_users. related_to_type must be candidate, contact, or company. Returns a compact call log summary with duration in seconds.",
+      inputSchema: updateCallLogInputSchema,
+      outputSchema: createCallLogOutputSchema,
+      annotations: {
+        readOnlyHint: false,
+        destructiveHint: true,
+        openWorldHint: false,
+      },
+    },
+    async (args) => formatResult(await executeUpdateCallLog(client, args as UpdateCallLogInput)),
+  );
+
+  server.registerTool(
     "get_candidate_details",
     {
       title: "Get Candidate Details",
       description:
-        "Fetch full details for up to 10 candidates in parallel by slug. Use this when the user asks for details on a specific set of candidates (e.g. after they pick a shortlist from search_candidates). If ownership matters, first use owner-scoped search_candidates. Do NOT use for bulk scans of the whole database — use search_candidates or list_candidates for that. Returns partial results: one bad slug will not fail the batch, failures are reported in the errors array with status_code.",
+        "Fetches full details for up to 10 candidates in parallel by slug. Suitable for retrieving specific candidate records after slug resolution from search_candidates. Not intended for bulk database scans. Returns partial results: failures are reported in the errors array with status_code.",
       inputSchema: getCandidateDetailsInputSchema,
       outputSchema: candidateDetailsOutputSchema,
       annotations: {
@@ -2040,18 +3470,16 @@ export function createRecruitCrmServer(dependencies: ServerDependencies = {}): M
     {
       title: "Get Job Details",
       description:
-        "Fetch one Recruit CRM job by slug and return the raw Recruit CRM payload. If ownership matters, first use owner-scoped search_jobs. The raw payload may include resource_url and application_form_url for opening the job directly in Recruit CRM.",
-      inputSchema: {
-        job_slug: textFilterSchema.describe("Job slug."),
-      },
-      outputSchema: jobDetailOutputSchema,
+        "Fetches full details for up to 10 Recruit CRM jobs in parallel by slug. Suitable for retrieving specific job records after slug resolution from search_jobs. Returns full Recruit CRM job payloads with partial results: failures are reported in the errors array with status_code.",
+      inputSchema: getJobDetailsInputSchema,
+      outputSchema: jobDetailsOutputSchema,
       annotations: {
         readOnlyHint: true,
         destructiveHint: false,
         openWorldHint: false,
       },
     },
-    async ({ job_slug }) => formatResult(await executeGetJobDetails(client, job_slug)),
+    async (args) => formatResult(await executeGetJobDetails(client, args)),
   );
 
   server.registerTool(
@@ -2059,7 +3487,7 @@ export function createRecruitCrmServer(dependencies: ServerDependencies = {}): M
     {
       title: "Get Company Details",
       description:
-        "Fetch full details for up to 10 companies in parallel by slug. Use this when the user asks for details on a specific set of companies (e.g. after they pick results from search_companies). If ownership matters, first use owner-scoped search_companies. Do NOT use for bulk scans of the whole database — use search_companies or list_companies for that. Returns partial results: one bad slug will not fail the batch, failures are reported in the errors array with status_code.",
+        "Fetches full details for up to 10 companies in parallel by slug. Suitable for retrieving specific company records after slug resolution from search_companies. Not intended for bulk database scans. Returns partial results: failures are reported in the errors array with status_code.",
       inputSchema: getCompanyDetailsInputSchema,
       outputSchema: companyDetailsOutputSchema,
       annotations: {
@@ -2076,7 +3504,7 @@ export function createRecruitCrmServer(dependencies: ServerDependencies = {}): M
     {
       title: "Get Contact Details",
       description:
-        "Fetch full details for up to 10 contacts in parallel by slug. Use this when the user asks for details on a specific set of contacts (e.g. after they pick results from search_contacts). If ownership matters, first use owner-scoped search_contacts. Do NOT use for full-database scans — use search_contacts or list_contacts for that. Returns partial results: one bad slug will not fail the batch, failures are reported in the errors array with status_code.",
+        "Fetches full details for up to 10 contacts in parallel by slug. Suitable for retrieving specific contact records after slug resolution from search_contacts. Not intended for bulk database scans. Returns partial results: failures are reported in the errors array with status_code.",
       inputSchema: getContactDetailsInputSchema,
       outputSchema: contactDetailsOutputSchema,
       annotations: {
@@ -2093,7 +3521,7 @@ export function createRecruitCrmServer(dependencies: ServerDependencies = {}): M
     {
       title: "Get Job Assigned Candidates",
       description:
-        "Fetch assigned candidates for one Recruit CRM job and return compact assignment summaries. If the user says 'my job', first resolve the job through owner-scoped search_jobs. For stage-label filters such as Placed, resolve status_id with list_candidate_hiring_stages first: use the job's hiring_pipeline_id from search_jobs/list_jobs for job-specific stages, or hiring_pipeline_id 0 when only a global hiring stage ID is needed and no job context is required. Returns candidate_slug values that can be used to open Recruit CRM candidate URLs like https://app.recruitcrm.io/candidate/{candidate_slug}.",
+        "Fetches assigned candidates for one Recruit CRM job and returns compact assignment summaries. Filter by status_id to narrow to a specific hiring stage; resolve stage IDs with list_candidate_hiring_stages (use the job's hiring_pipeline_id for job-specific stages, or 0 for global stages). Returns candidate_slug values for Recruit CRM candidate links like https://app.recruitcrm.io/candidate/{candidate_slug}.",
       inputSchema: getJobAssignedCandidatesInputSchema,
       outputSchema: getJobAssignedCandidatesOutputSchema,
       annotations: {
@@ -2111,7 +3539,7 @@ export function createRecruitCrmServer(dependencies: ServerDependencies = {}): M
     {
       title: "List Candidate Hiring Stages",
       description:
-        "List Recruit CRM candidate hiring stages for a hiring pipeline and return compact stage rows for resolving labels to stage ids. Pass hiring_pipeline_id 0 (default) for the Master Hiring Pipeline when only a hiring stage ID is needed and there is no job dependency. For job-specific stages, use the hiring_pipeline_id returned by search_jobs or list_jobs. Use this before get_job_assigned_candidates.status_id and update_candidate_hiring_stage.status_id.",
+        "Lists Recruit CRM candidate hiring stages for a hiring pipeline, returning compact stage rows for resolving labels to stage IDs. Pass hiring_pipeline_id 0 (default) for the Master Hiring Pipeline; for job-specific stages, use the hiring_pipeline_id returned by search_jobs or list_jobs. Stage IDs are used by get_job_assigned_candidates.status_id and update_candidate_hiring_stage.status_id.",
       inputSchema: listCandidateHiringStagesInputSchema,
       outputSchema: listCandidateHiringStagesOutputSchema,
       annotations: {
@@ -2124,17 +3552,103 @@ export function createRecruitCrmServer(dependencies: ServerDependencies = {}): M
   );
 
   server.registerTool(
+    "list_pitch_stages",
+    {
+      title: "List Pitch Stages",
+      description:
+        "Lists Recruit CRM pitch pipeline stages with status_id and label values for resolving stage names used by update_candidate_pitch_stage.",
+      inputSchema: {},
+      outputSchema: listPitchStagesOutputSchema,
+      annotations: {
+        readOnlyHint: true,
+        destructiveHint: false,
+        openWorldHint: false,
+      },
+    },
+    async () => formatResult(await executeListPitchStages(client)),
+  );
+
+  server.registerTool(
+    "pitch_candidate_to_contact",
+    {
+      title: "Pitch Candidate To Contact",
+      description:
+        "Marks one Recruit CRM candidate as pitched to one contact. Requires candidate_slug, contact_slug, and created_by. Checks existing candidate/contact pitch records unless allow_duplicate=true. This records the pitch in Recruit CRM; the API does not send an email to the candidate or contact.",
+      inputSchema: pitchCandidateToContactInputSchema,
+      outputSchema: pitchActionOutputSchema,
+      annotations: {
+        readOnlyHint: false,
+        destructiveHint: true,
+        openWorldHint: false,
+      },
+    },
+    async (args) => formatResult(await executePitchCandidateToContact(client, args as PitchCandidateToContactInput)),
+  );
+
+  server.registerTool(
+    "update_candidate_pitch_stage",
+    {
+      title: "Update Candidate Pitch Stage",
+      description:
+        "Updates the pitch stage for one candidate/contact pitch record. Requires candidate_slug, contact_slug, status_id, stage_date, and updated_by. Resolve status_id with list_pitch_stages. remark is optional text.",
+      inputSchema: updateCandidatePitchStageInputSchema,
+      outputSchema: pitchActionOutputSchema,
+      annotations: {
+        readOnlyHint: false,
+        destructiveHint: true,
+        openWorldHint: false,
+      },
+    },
+    async (args) => formatResult(await executeUpdateCandidatePitchStage(client, args as UpdateCandidatePitchStageInput)),
+  );
+
+  server.registerTool(
+    "get_pitch_history",
+    {
+      title: "Get Pitch History",
+      description:
+        "Fetches pitch history for one Recruit CRM candidate or contact by slug. Set entity_type to candidate for candidate pitch history, or contact for contact pitch history. Returns compact pitch entries without email, phone, resume, or profile image fields.",
+      inputSchema: pitchEntityLookupInputSchema,
+      outputSchema: pitchHistoryOutputSchema,
+      annotations: {
+        readOnlyHint: true,
+        destructiveHint: false,
+        openWorldHint: false,
+      },
+    },
+    async ({ entity_type, entity_slug }) =>
+      formatResult(await executeGetPitchHistory(client, entity_type as PitchEntityType, entity_slug)),
+  );
+
+  server.registerTool(
+    "get_pitched_records",
+    {
+      title: "Get Pitched Records",
+      description:
+        "Fetches contacts where a candidate is pitched or candidates pitched to a contact. Set entity_type to candidate to return contacts for a candidate slug, or contact to return candidates for a contact slug. Returns compact records without email, phone, resume, or profile image fields.",
+      inputSchema: pitchEntityLookupInputSchema,
+      outputSchema: pitchedRecordsOutputSchema,
+      annotations: {
+        readOnlyHint: true,
+        destructiveHint: false,
+        openWorldHint: false,
+      },
+    },
+    async ({ entity_type, entity_slug }) =>
+      formatResult(await executeGetPitchedRecords(client, entity_type as PitchEntityType, entity_slug)),
+  );
+
+  server.registerTool(
     "assign_candidate_to_job",
     {
       title: "Assign Candidate To Job",
       description:
-        "Assign one Recruit CRM candidate to one job at the default Assigned hiring stage. Requires candidate_slug, job_slug, and updated_by. This endpoint does not support remarks, explicit stage selection, stage_date, or create_placement; use update_candidate_hiring_stage afterward when a non-default stage or remark is needed. This tool modifies Recruit CRM data and should only be used when explicitly requested.",
+        "Assigns one Recruit CRM candidate to one job at the default Assigned hiring stage. Requires candidate_slug, job_slug, and updated_by. Does not support remarks, explicit stage selection, stage_date, or create_placement; use update_candidate_hiring_stage afterward when a non-default stage or remark is needed.",
       inputSchema: assignCandidateToJobInputSchema,
       outputSchema: assignCandidateToJobOutputSchema,
       annotations: {
         readOnlyHint: false,
-        destructiveHint: false,
-        idempotentHint: false,
+        destructiveHint: true,
         openWorldHint: false,
       },
     },
@@ -2146,13 +3660,12 @@ export function createRecruitCrmServer(dependencies: ServerDependencies = {}): M
     {
       title: "Update Candidate Hiring Stage",
       description:
-        "Update one candidate's hiring stage for a specific Recruit CRM job. Requires candidate_slug, job_slug, status_id, stage_date, and updated_by. Resolve status_id with list_candidate_hiring_stages first: pass hiring_pipeline_id 0 when only a master hiring stage ID is needed, or use the job's hiring_pipeline_id from search_jobs/list_jobs for job-specific pipeline stages. create_placement defaults to false; set true only when the user explicitly asks to create a placement. remark supports basic HTML/rich text. This tool modifies Recruit CRM data and should only be used when explicitly requested.",
+        "Updates one candidate's hiring stage for a specific Recruit CRM job. Requires candidate_slug, job_slug, status_id, stage_date, and updated_by. By default this only changes the hiring stage. When create_placement=true, Recruit CRM also creates a placement record in the dedicated placements section. Resolve status_id with list_candidate_hiring_stages (use hiring_pipeline_id 0 for master stages, or the job's hiring_pipeline_id for job-specific stages). remark supports basic HTML/rich text.",
       inputSchema: updateCandidateHiringStageInputSchema,
       outputSchema: updateCandidateHiringStageOutputSchema,
       annotations: {
         readOnlyHint: false,
-        destructiveHint: false,
-        idempotentHint: false,
+        destructiveHint: true,
         openWorldHint: false,
       },
     },
@@ -2164,7 +3677,7 @@ export function createRecruitCrmServer(dependencies: ServerDependencies = {}): M
     {
       title: "List Job Statuses",
       description:
-        "List Recruit CRM job pipeline statuses (e.g. Open, Closed, On Hold, plus any custom statuses configured for the account). Returns compact rows with id and label so the LLM can resolve a status name (including custom labels) to the numeric job_status_id used by search_jobs.job_status. Use this whenever the user references a job status by name and the upstream filter needs the id.",
+        "Lists Recruit CRM job pipeline statuses (e.g. Open, Closed, On Hold, plus any custom statuses configured for the account). Returns compact rows with id and label for resolving a status name to the numeric job_status_id used in search_jobs.job_status.",
       inputSchema: {},
       outputSchema: listJobStatusesOutputSchema,
       annotations: {
@@ -2174,6 +3687,108 @@ export function createRecruitCrmServer(dependencies: ServerDependencies = {}): M
       },
     },
     async () => formatResult(await executeListJobStatuses(client)),
+  );
+
+  server.registerTool(
+    "list_contact_stages",
+    {
+      title: "List Contact Stages",
+      description:
+        "Lists Recruit CRM contact pipeline stages (the sales pipeline). Returns compact rows with stage_id and label for resolving a stage name to the numeric stage_id used in create_contact and update_contact.",
+      inputSchema: {},
+      outputSchema: listContactStagesOutputSchema,
+      annotations: {
+        readOnlyHint: true,
+        destructiveHint: false,
+        openWorldHint: false,
+      },
+    },
+    async () => formatResult(await executeListContactStages(client)),
+  );
+
+  server.registerTool(
+    "list_off_limit_statuses",
+    {
+      title: "List Off-Limit Statuses",
+      description:
+        "Lists Recruit CRM off-limit statuses configured for the account. Returns compact rows with id, label, sequence_no, and default for resolving status_id values used by the off-limit mark tools.",
+      inputSchema: {},
+      outputSchema: listOffLimitStatusesOutputSchema,
+      annotations: {
+        readOnlyHint: true,
+        destructiveHint: false,
+        openWorldHint: false,
+      },
+    },
+    async () => formatResult(await executeListOffLimitStatuses(client)),
+  );
+
+  server.registerTool(
+    "mark_candidate_off_limit",
+    {
+      title: "Mark Candidate Off-Limit",
+      description:
+        "Marks up to 25 Recruit CRM candidates as off-limit. Requires candidate_slugs, status_id, and end_date in DD-MM-YYYY format; reason is optional. Returns the updated slug list, status_id, end_date, reason, and API remark.",
+      inputSchema: markCandidateOffLimitInputSchema,
+      outputSchema: markCandidateOffLimitOutputSchema,
+      annotations: {
+        readOnlyHint: false,
+        destructiveHint: true,
+        openWorldHint: false,
+      },
+    },
+    async (args) => formatResult(await executeMarkCandidateOffLimit(client, args as MarkCandidateOffLimitInput)),
+  );
+
+  server.registerTool(
+    "mark_contact_off_limit",
+    {
+      title: "Mark Contact Off-Limit",
+      description:
+        "Marks up to 25 Recruit CRM contacts as off-limit. Requires contact_slugs, status_id, and end_date in DD-MM-YYYY format; reason is optional. Returns the updated slug list, status_id, end_date, reason, and API remark.",
+      inputSchema: markContactOffLimitInputSchema,
+      outputSchema: markContactOffLimitOutputSchema,
+      annotations: {
+        readOnlyHint: false,
+        destructiveHint: true,
+        openWorldHint: false,
+      },
+    },
+    async (args) => formatResult(await executeMarkContactOffLimit(client, args as MarkContactOffLimitInput)),
+  );
+
+  server.registerTool(
+    "mark_company_off_limit",
+    {
+      title: "Mark Company Off-Limit",
+      description:
+        "Marks up to 25 Recruit CRM companies as off-limit. Requires company_slugs, status_id, end_date in DD-MM-YYYY format, mark_contact_off_limit, and mark_candidate_off_limit; reason is optional. The mark_contact_off_limit and mark_candidate_off_limit booleans control whether Recruit CRM also marks related records off-limit. Returns the updated slug list, status_id, end_date, reason, and API remark.",
+      inputSchema: markCompanyOffLimitInputSchema,
+      outputSchema: markCompanyOffLimitOutputSchema,
+      annotations: {
+        readOnlyHint: false,
+        destructiveHint: true,
+        openWorldHint: false,
+      },
+    },
+    async (args) => formatResult(await executeMarkCompanyOffLimit(client, args as MarkCompanyOffLimitInput)),
+  );
+
+  server.registerTool(
+    "mark_records_available",
+    {
+      title: "Mark Records Available",
+      description:
+        "Marks Recruit CRM candidates, contacts, or companies as available, which removes their off-limit state. Requires record_type and up to 25 slugs. For record_type=company, mark_contact_available and mark_candidate_available are required and control whether Recruit CRM also marks related contacts or candidates available. Returns record_type, updated slugs, requested_count, cascade flags when returned by the API, and API remark.",
+      inputSchema: markRecordsAvailableInputSchema,
+      outputSchema: markRecordsAvailableOutputSchema,
+      annotations: {
+        readOnlyHint: false,
+        destructiveHint: true,
+        openWorldHint: false,
+      },
+    },
+    async (args) => formatResult(await executeMarkRecordsAvailable(client, args as MarkRecordsAvailableInput)),
   );
 
   server.registerTool(
@@ -2197,54 +3812,63 @@ export function createRecruitCrmServer(dependencies: ServerDependencies = {}): M
   );
 
   server.registerTool(
-    "list_candidate_custom_fields",
+    "list_custom_fields",
     {
-      title: "List Candidate Custom Fields",
-      description: "List curated candidate custom field metadata for search. Returns searchable fields by default.",
+      title: "List Custom Fields",
+      description:
+        "List curated custom field metadata for a specific entity type (candidates, contacts, companies, jobs, deals). " +
+        "Returns searchable fields by default; set include_non_searchable=true to also include non-searchable types.",
       inputSchema: {
+        entity_type: z
+          .enum(["candidates", "contacts", "companies", "jobs", "deals"])
+          .describe("Entity type to fetch custom fields for."),
         include_non_searchable: booleanLikeSchema
           .optional()
-          .describe("Include custom fields that cannot be used in search."),
+          .describe("Include custom fields that cannot be used in search (e.g. file, user, company fields)."),
       },
-      outputSchema: listCandidateCustomFieldsOutputSchema,
+      outputSchema: listCustomFieldsOutputSchema,
       annotations: {
         readOnlyHint: true,
         destructiveHint: false,
         openWorldHint: false,
       },
     },
-    async ({ include_non_searchable }) =>
-      formatResult(await executeListCandidateCustomFields(client, include_non_searchable ?? false)),
+    async ({ entity_type, include_non_searchable }) =>
+      formatResult(await executeListCustomFields(client, entity_type, include_non_searchable ?? false)),
   );
 
   server.registerTool(
-    "get_candidate_custom_field_details",
+    "get_custom_field_details",
     {
-      title: "Get Candidate Custom Field Details",
-      description: "Fetch curated candidate custom field details by field_id, including dropdown or multiselect options.",
+      title: "Get Custom Field Details",
+      description:
+        "Fetch curated details for one custom field by field_id and entity_type, including dropdown or multiselect option values.",
       inputSchema: {
-        field_id: z.coerce.number().int().positive().describe("Candidate custom field id."),
+        field_id: z.coerce.number().int().positive().describe("Custom field id."),
+        entity_type: z
+          .enum(["candidates", "contacts", "companies", "jobs", "deals"])
+          .describe("Entity type the field belongs to."),
       },
-      outputSchema: candidateCustomFieldDetailOutputSchema,
+      outputSchema: customFieldDetailOutputSchema,
       annotations: {
         readOnlyHint: true,
         destructiveHint: false,
         openWorldHint: false,
       },
     },
-    async ({ field_id }) => formatResult(await executeGetCandidateCustomFieldDetails(client, field_id)),
+    async ({ field_id, entity_type }) => formatResult(await executeGetCustomFieldDetails(client, field_id, entity_type)),
   );
 
   server.registerTool(
     "get_custom_field_dependencies",
     {
       title: "Get Custom Field Dependencies",
+      outputSchema: getCustomFieldDependenciesOutputSchema,
       description:
-        "Get parent-child dependency relationships for custom fields of a given entity type " +
+        "Fetches parent-child dependency relationships for custom fields of a given entity type " +
         "(candidates, contacts, companies, jobs, deals). " +
-        "Optionally narrow to a specific field's dependency subtree via field_id (pass the parent or child field_id). " +
-        "Call this before setting a nested/child custom field — the parent field_id and its value " +
-        "must also be included in the custom_fields array, or the API will reject the request with a dependency error.",
+        "Optionally narrow to a specific field's subtree via field_id (pass the parent or child field_id). " +
+        "When setting a child custom field, the parent field_id and its value must also be included in the custom_fields array.",
       inputSchema: {
         entity_type: z
           .enum(["candidates", "contacts", "companies", "jobs", "deals"])
@@ -2258,7 +3882,6 @@ export function createRecruitCrmServer(dependencies: ServerDependencies = {}): M
             "Optional: narrow results to the dependency subtree for a specific field ID (parent or child). Omit to fetch all dependencies for the entity type.",
           ),
       },
-      outputSchema: getCustomFieldDependenciesOutputSchema,
       annotations: {
         readOnlyHint: true,
         destructiveHint: false,
@@ -2270,11 +3893,28 @@ export function createRecruitCrmServer(dependencies: ServerDependencies = {}): M
   );
 
   server.registerTool(
+    "prepare_client_brief",
+    {
+      title: "Prepare Client Brief",
+      description:
+        "Prepares a client/account briefing for recruiters before a client call, client meeting, hiring-manager check-in, account review, business-development outreach, or client follow-up. Produces talking points, account health, open jobs, primary and secondary client contacts, assigned-candidate pipeline status, client-feedback blockers, candidates waiting on feedback, recent notes / meetings / tasks / call logs, pitched candidates for the contact, relationship risks, and recommended follow-ups. Inputs are exact Recruit CRM contact_slug or company_slug; display names are not accepted as slug values. Returns summaries and recommended follow-ups only.",
+      inputSchema: prepareClientBriefInputSchema,
+      outputSchema: prepareClientBriefOutputSchema,
+      annotations: {
+        readOnlyHint: true,
+        destructiveHint: false,
+        openWorldHint: false,
+      },
+    },
+    async (args) => formatResult(await executePrepareClientBrief(client, args as PrepareClientBriefInput)),
+  );
+
+  server.registerTool(
     "analyze_job_pipeline",
     {
       title: "Analyze Job Pipeline",
       description:
-        "Diagnose a single Recruit CRM job's hiring pipeline in one call: stage-by-stage candidate distribution, days_in_current_stage per active candidate (sourced from assignment-level stage_date by default — cheap, ~7 API hits), idle / at-risk candidates, bottleneck stage verdict, recent notes / meetings / tasks tied to the job, and suggested next actions. Use this for prompts like \"how's job X doing\", \"is this role stuck\", \"review my pipeline for X\", \"any bottlenecks\", \"who's been sitting too long\", \"what should I do next on this job\". For prompts that ask about time-to-hire, time-to-offer, time-to-interview, time-to-first-action, or any \"how long does it take to …\" question, set include_time_metrics=true — this fetches per-candidate /history for capped active + Placed candidates and populates the time_metrics block. Default include_time_metrics=false keeps the call cheap; only flip it on when time-based metrics are explicitly requested. Requires the job slug — if the user only gave a job name or title, FIRST call search_jobs to resolve the slug, then call this; never ask the user for a slug. If the user implies self-ownership (\"my jobs\", \"my pipeline\"), resolve their user_id via list_users first, then filter search_jobs by owner_id. Candidate slugs in the response can be hyperlinked as https://app.recruitcrm.io/candidate/{candidate_slug}. Call logs are not included because the Recruit CRM API does not support filtering call logs by job.",
+        "Diagnoses a single Recruit CRM job's hiring pipeline: stage-by-stage candidate distribution, days_in_current_stage per active candidate (sourced from assignment-level stage_date — ~7 API calls), idle and at-risk candidates, bottleneck stage verdict, recent notes / meetings / tasks tied to the job, and suggested next actions. Set include_time_metrics=true to add time-to-hire, time-to-stage, and time-to-first-action metrics (fetches per-candidate history for capped active and Placed candidates, typically +25–55 extra calls). Requires a job_slug; resolve from search_jobs if only a job name is available. Candidate slugs in the response can be linked as https://app.recruitcrm.io/candidate/{candidate_slug}. Call logs are not included because the Recruit CRM API does not support filtering call logs by job.",
       inputSchema: analyzeJobPipelineInputSchema,
       outputSchema: analyzeJobPipelineOutputSchema,
       annotations: {
@@ -2301,6 +3941,7 @@ export async function executeSearchCandidates(
 
   const result = await client.searchCandidates({
     page: args.page ?? 1,
+    limit: args.limit,
     created_from: args.created_from,
     created_to: args.created_to,
     email: args.email,
@@ -2346,9 +3987,16 @@ export async function executeListCandidates(
 
 const CANDIDATE_URL_FIELDS = ["avatar", "facebook", "twitter", "linkedin", "github", "xing", "resume"] as const;
 
+// Matches strings composed entirely of base64 characters; used to detect encoded file content.
+const BASE64_CONTENT_REGEX = /^[A-Za-z0-9+/]+=*$/;
+
 function normalizeCandidateUrlField(value: string | undefined): string | undefined {
   if (!value) return value;
-  return /^https?:\/\//i.test(value) ? value : `https://${value}`;
+  if (/^https?:\/\//i.test(value)) return value;
+  // Long strings of pure base64 characters are encoded file content, not bare URLs.
+  // Prepending "https://" to them would corrupt the payload and cause the API to reject it.
+  if (value.length > 50 && BASE64_CONTENT_REGEX.test(value)) return value;
+  return `https://${value}`;
 }
 
 export async function executeCreateCandidate(
@@ -2356,42 +4004,63 @@ export async function executeCreateCandidate(
   args: CreateCandidateInput,
 ): Promise<CreateCandidateResult> {
   if (!args.first_name && !args.last_name) {
-    throw new RecruitCrmApiError("Either first_name or last_name is required to create or update a candidate.");
+    throw new RecruitCrmApiError("Either first_name or last_name is required to create a candidate.");
   }
 
-  // Normalize URL fields — prepend https:// when scheme is missing
-  for (const field of CANDIDATE_URL_FIELDS) {
-    const val = args[field];
-    if (val) {
-      args = { ...args, [field]: normalizeCandidateUrlField(val) };
-    }
+  args = normalizeCandidateMutationUrls(args);
+
+  if (!args.owner_id) {
+    throw new RecruitCrmApiError("owner_id is required when creating a candidate. Use list_users to resolve the current user ID.");
+  }
+  if (!args.created_by) {
+    throw new RecruitCrmApiError("created_by is required when creating a candidate. Use list_users to resolve the current user ID.");
+  }
+  if (!args.updated_by) {
+    args = { ...args, updated_by: args.created_by };
   }
 
-  // Enforce owner/created_by on create, updated_by on update
-  if (!args.existing_candidate_slug) {
-    if (!args.owner_id) {
-      throw new RecruitCrmApiError("owner_id is required when creating a candidate. Use list_users to resolve the current user ID.");
-    }
-    if (!args.created_by) {
-      throw new RecruitCrmApiError("created_by is required when creating a candidate. Use list_users to resolve the current user ID.");
-    }
-    if (!args.updated_by) {
-      args = { ...args, updated_by: args.created_by };
-    }
-  } else {
-    if (!args.updated_by) {
-      throw new RecruitCrmApiError("updated_by is required when updating a candidate. Use list_users to resolve the current user ID.");
-    }
-  }
-
-  if (!args.existing_candidate_slug && !args.allow_duplicate) {
+  if (!args.allow_duplicate) {
     await assertNoCreateCandidateDuplicates(client, args);
   }
 
-  const action = args.existing_candidate_slug ? "updated" : "created";
-  const candidate = args.existing_candidate_slug
-    ? await client.updateCandidate(args.existing_candidate_slug, args)
-    : await client.createCandidate(args);
+  const candidate = await client.createCandidate(args);
+  return executeCandidateHistoryAndMap(client, candidate, "created", args);
+}
+
+export async function executeUpdateCandidate(
+  client: RecruitCrmClient,
+  args: UpdateCandidateInput,
+): Promise<CreateCandidateResult> {
+  if (!args.first_name && !args.last_name) {
+    throw new RecruitCrmApiError("Either first_name or last_name is required to update a candidate.");
+  }
+  if (!args.updated_by) {
+    throw new RecruitCrmApiError("updated_by is required when updating a candidate. Use list_users to resolve the current user ID.");
+  }
+
+  args = normalizeCandidateMutationUrls(args);
+
+  const candidate = await client.updateCandidate(args.candidate_slug, args);
+  return executeCandidateHistoryAndMap(client, candidate, "updated", args);
+}
+
+function normalizeCandidateMutationUrls<T extends CreateCandidateInput | UpdateCandidateInput>(args: T): T {
+  let normalizedArgs = args;
+  for (const field of CANDIDATE_URL_FIELDS) {
+    const val = normalizedArgs[field];
+    if (val) {
+      normalizedArgs = { ...normalizedArgs, [field]: normalizeCandidateUrlField(val) };
+    }
+  }
+  return normalizedArgs;
+}
+
+async function executeCandidateHistoryAndMap(
+  client: RecruitCrmClient,
+  candidate: CreatedCandidate,
+  action: "created" | "updated",
+  args: CreateCandidateInput | UpdateCandidateInput,
+): Promise<CreateCandidateResult> {
   const candidateSlug = candidate.slug;
 
   if (!candidateSlug) {
@@ -2483,8 +4152,91 @@ export async function executeListUsers(client: RecruitCrmClient, args: ListUsers
   });
 }
 
+export async function executeListTeams(client: RecruitCrmClient, args: ListTeamsInput): Promise<ListTeamsResult> {
+  const result = await client.listTeams({
+    expand: args.expand,
+  });
+
+  return mapListTeamsResult(result, {
+    page: args.page ?? 1,
+    limit: args.limit ?? 100,
+    includeUserContactInfo: args.include_user_contact_info ?? false,
+  });
+}
+
+export async function executeListCandidateQuestions(
+  client: RecruitCrmClient,
+  args: { page?: number; limit?: number },
+): Promise<ListCandidateQuestionsResult> {
+  const result = await client.listCandidateQuestions();
+
+  return mapListCandidateQuestionsResult(result, {
+    page: args.page ?? 1,
+    limit: args.limit ?? 100,
+  });
+}
+
+export async function executeListHiringPipelines(
+  client: RecruitCrmClient,
+  args: { page?: number; limit?: number },
+): Promise<ListHiringPipelinesResult> {
+  const result = await client.listHiringPipelines();
+
+  return mapListHiringPipelinesResult(result, {
+    page: args.page ?? 1,
+    limit: args.limit ?? 100,
+  });
+}
+
+export async function executeListLanguagesAndProficiencies(
+  client: RecruitCrmClient,
+  args: { page?: number; limit?: number },
+): Promise<ListLanguagesAndProficienciesResult> {
+  const result = await client.listLanguages();
+
+  return mapListLanguagesAndProficienciesResult(result, {
+    page: args.page ?? 1,
+    limit: args.limit ?? 100,
+  });
+}
+
+export async function executeListCurrencies(
+  client: RecruitCrmClient,
+  args: { page?: number; limit?: number },
+): Promise<ListCurrenciesResult> {
+  const result = await client.listCurrencies();
+
+  return mapListCurrenciesResult(result, {
+    page: args.page ?? 1,
+    limit: args.limit ?? 100,
+  });
+}
+
+export async function executeListQualifications(
+  client: RecruitCrmClient,
+  args: { page?: number; limit?: number },
+): Promise<ListQualificationsResult> {
+  const result = await client.listQualifications();
+
+  return mapListQualificationsResult(result, {
+    page: args.page ?? 1,
+    limit: args.limit ?? 100,
+  });
+}
+
+export async function executeListXmlJobboards(client: RecruitCrmClient): Promise<ListXmlJobboardsResult> {
+  const result = await client.listXmlJobboards();
+
+  return mapListXmlJobboardsResult(result);
+}
+
 export async function executeSearchJobs(client: RecruitCrmClient, args: SearchJobsInput): Promise<SearchJobsResult> {
-  const filters: SearchJobsInput = {
+  if (!args.job_slug && args.custom_fields && args.custom_fields.length > 0) {
+    const customFields = await client.getEntityCustomFields("job");
+    validateCustomFieldFilters(args.custom_fields, customFields, "job");
+  }
+
+  const result = await client.searchJobs({
     page: args.page ?? 1,
     city: args.city,
     company_name: args.company_name,
@@ -2519,100 +4271,51 @@ export async function executeSearchJobs(client: RecruitCrmClient, args: SearchJo
     sort_order: args.sort_order ?? "desc",
     updated_from: args.updated_from,
     updated_to: args.updated_to,
-  };
-
-  const result =
-    filters.job_status === undefined
-      ? await client.searchJobs(filters)
-      : await searchJobsWithLocalStatusFilter(client, filters, filters.job_status);
+    custom_fields: args.custom_fields,
+  });
 
   return mapSearchJobsResult(result);
 }
 
-async function searchJobsWithLocalStatusFilter(
+export async function executeCreateJob(
   client: RecruitCrmClient,
-  filters: SearchJobsInput,
-  jobStatus: number,
-): Promise<RecruitCrmJobSearchResponse> {
-  const requestedPage = filters.page ?? 1;
-  const requestedLimit = filters.limit ?? 100;
-  const requiredMatches = requestedPage * requestedLimit + 1;
-  const matches: RecruitCrmJob[] = [];
-  const useSearchEndpoint = hasSearchJobFiltersForApi(filters);
-  let sourcePage = 1;
+  args: CreateJobInput,
+): Promise<CreateJobResult> {
+  validateJobMutationInput(args);
 
-  while (matches.length < requiredMatches) {
-    const page = useSearchEndpoint
-      ? await client.searchJobs(buildStatuslessSearchJobFilters(filters, sourcePage))
-      : await client.listJobs({
-          page: sourcePage,
-          limit: 100,
-          sort_by: filters.sort_by,
-          sort_order: filters.sort_order,
-        });
+  const job = await client.createJob({
+    ...args,
+    enable_auto_populate_teams: args.enable_auto_populate_teams ?? true,
+    show_company_logo: args.show_company_logo ?? 2,
+  });
 
-    matches.push(...page.data.filter((job) => getJobStatusId(job) === jobStatus));
-
-    const hasMore = typeof page.next_page_url === "string" && page.next_page_url.length > 0;
-    if (!hasMore) {
-      break;
-    }
-
-    sourcePage += 1;
-  }
-
-  const start = (requestedPage - 1) * requestedLimit;
-  const end = start + requestedLimit;
-  const hasMoreFilteredMatches = matches.length > end;
-
-  return {
-    current_page: requestedPage,
-    next_page_url: hasMoreFilteredMatches ? `local://search_jobs/job_status/${jobStatus}?page=${requestedPage + 1}` : null,
-    data: matches.slice(start, end),
-  };
+  return mapCreatedJobResult(job, "created");
 }
 
-function getJobStatusId(job: RecruitCrmJob): number | null {
-  const rawId = job.job_status?.id;
-  if (rawId === undefined || rawId === null || rawId === "") {
-    return null;
-  }
+export async function executeUpdateJob(
+  client: RecruitCrmClient,
+  args: UpdateJobInput,
+): Promise<CreateJobResult> {
+  validateJobMutationInput(args);
+  validateUpdateJobHasFields(args);
 
-  const id = Number(rawId);
-  return Number.isFinite(id) ? id : null;
-}
+  const job = await client.updateJob(args.job_slug, args);
 
-function hasSearchJobFiltersForApi(filters: SearchJobsInput): boolean {
-  const ignoredKeys: Array<keyof SearchJobsInput> = [
-    "page",
-    "limit",
-    "sort_by",
-    "sort_order",
-    "exact_search",
-    "job_status",
-  ];
-  const ignored = new Set<keyof SearchJobsInput>(ignoredKeys);
-
-  return (Object.keys(filters) as Array<keyof SearchJobsInput>).some(
-    (key) => !ignored.has(key) && filters[key] !== undefined,
-  );
-}
-
-function buildStatuslessSearchJobFilters(filters: SearchJobsInput, sourcePage: number): SearchJobsInput {
-  return {
-    ...filters,
-    job_status: undefined,
-    page: sourcePage,
-    limit: 100,
-  };
+  return mapCreatedJobResult(job, "updated");
 }
 
 export async function executeSearchCompanies(
   client: RecruitCrmClient,
   args: SearchCompaniesInput,
 ): Promise<SearchCompaniesResult> {
+  if (!args.company_slug && args.custom_fields && args.custom_fields.length > 0) {
+    const customFields = await client.getEntityCustomFields("company");
+    validateCustomFieldFilters(args.custom_fields, customFields, "company");
+  }
+
   const result = await client.searchCompanies({
     page: args.page ?? 1,
+    limit: args.limit,
     company_name: args.company_name,
     created_from: args.created_from,
     created_to: args.created_to,
@@ -2626,9 +4329,29 @@ export async function executeSearchCompanies(
     exact_search: args.exact_search,
     sort_by: args.sort_by ?? "updatedon",
     sort_order: args.sort_order ?? "desc",
+    custom_fields: args.custom_fields,
   });
 
   return mapSearchCompaniesResult(result);
+}
+
+export async function executeCreateCompany(
+  client: RecruitCrmClient,
+  args: CreateCompanyInput,
+): Promise<CreateCompanyResult> {
+  if (!args.allow_duplicate) {
+    await assertNoCreateCompanyDuplicates(client, args);
+  }
+  const company = await client.createCompany(args);
+  return mapCreatedCompanyResult(company, "created");
+}
+
+export async function executeUpdateCompany(
+  client: RecruitCrmClient,
+  args: UpdateCompanyInput,
+): Promise<CreateCompanyResult> {
+  const company = await client.updateCompany(args.company_slug, args);
+  return mapCreatedCompanyResult(company, "updated");
 }
 
 export async function executeSearchContacts(
@@ -2637,8 +4360,14 @@ export async function executeSearchContacts(
 ): Promise<SearchContactsResult> {
   validateSearchContactsFilters(args);
 
+  if (!args.contact_slug && args.custom_fields && args.custom_fields.length > 0) {
+    const customFields = await client.getEntityCustomFields("contact");
+    validateCustomFieldFilters(args.custom_fields, customFields, "contact");
+  }
+
   const result = await client.searchContacts({
     page: args.page ?? 1,
+    limit: args.limit,
     created_from: args.created_from,
     created_to: args.created_to,
     email: args.email,
@@ -2657,6 +4386,7 @@ export async function executeSearchContacts(
     exact_search: args.exact_search,
     sort_by: args.sort_by ?? "updatedon",
     sort_order: args.sort_order ?? "desc",
+    custom_fields: args.custom_fields,
   });
 
   return mapSearchContactsResult(result, {
@@ -2734,6 +4464,20 @@ export async function executeCreateTask(client: RecruitCrmClient, args: CreateTa
   return mapCreateTaskResult(result);
 }
 
+export async function executeUpdateTask(client: RecruitCrmClient, args: UpdateTaskInput): Promise<CreateTaskResult> {
+  validateActivityUpdateHasFields(args, ["task_id", "updated_by"], "update_task");
+  validateRelatedFilters(args);
+
+  if (args.task_type_id !== undefined) {
+    const taskTypes = await client.listTaskTypes();
+    validateTaskTypeId(args.task_type_id, taskTypes);
+  }
+
+  const result = await client.updateTask(args.task_id, args);
+
+  return mapCreateTaskResult(result);
+}
+
 export async function executeSearchMeetings(
   client: RecruitCrmClient,
   args: SearchMeetingsInput,
@@ -2785,6 +4529,27 @@ export async function executeCreateMeeting(
   return mapCreateMeetingResult(result);
 }
 
+export async function executeUpdateMeeting(
+  client: RecruitCrmClient,
+  args: UpdateMeetingInput,
+): Promise<CreateMeetingResult> {
+  validateActivityUpdateHasFields(args, ["meeting_id", "updated_by"], "update_meeting");
+
+  if (args.meeting_type_id !== undefined) {
+    const meetingTypes = await client.listMeetingTypes();
+    validateMeetingTypeId(args.meeting_type_id, meetingTypes);
+  }
+
+  validateRelatedFilters(args);
+
+  const result = await client.updateMeeting(args.meeting_id, {
+    ...args,
+    do_not_send_calendar_invites: args.do_not_send_calendar_invites ?? true,
+  });
+
+  return mapCreateMeetingResult(result);
+}
+
 export async function executeSearchNotes(client: RecruitCrmClient, args: SearchNotesInput): Promise<SearchNotesResult> {
   validateRelatedFilters(args);
 
@@ -2816,6 +4581,20 @@ export async function executeCreateNote(client: RecruitCrmClient, args: CreateNo
   return mapCreateNoteResult(result);
 }
 
+export async function executeUpdateNote(client: RecruitCrmClient, args: UpdateNoteInput): Promise<CreateNoteResult> {
+  validateActivityUpdateHasFields(args, ["note_id", "updated_by"], "update_note");
+  validateRelatedFilters(args);
+
+  if (args.note_type_id !== undefined) {
+    const noteTypes = await client.listNoteTypes();
+    validateNoteTypeId(args.note_type_id, noteTypes);
+  }
+
+  const result = await client.updateNote(args.note_id, args);
+
+  return mapCreateNoteResult(result);
+}
+
 export async function executeSearchCallLogs(
   client: RecruitCrmClient,
   args: SearchCallLogsInput,
@@ -2835,6 +4614,42 @@ export async function executeSearchCallLogs(
   });
 
   return mapSearchCallLogsResult(result);
+}
+
+export async function executeListCallTypes(client: RecruitCrmClient): Promise<ListCallTypesResult> {
+  const result = await client.listCallTypes();
+
+  return mapListCallTypesResult(result);
+}
+
+export async function executeCreateCallLog(
+  client: RecruitCrmClient,
+  args: CreateCallLogInput,
+): Promise<CreateCallLogResult> {
+  const callTypes = await client.listCallTypes();
+  validateCallLogCustomTypeId(args.custom_call_type_id, callTypes);
+
+  const result = await client.createCallLog(args);
+
+  return mapCreateCallLogResult(result);
+}
+
+export async function executeUpdateCallLog(
+  client: RecruitCrmClient,
+  args: UpdateCallLogInput,
+): Promise<CreateCallLogResult> {
+  validateActivityUpdateHasFields(args, ["call_log_id", "updated_by"], "update_call_log");
+  validateRelatedFilters(args);
+  validateCallLogRelatedType(args.related_to_type);
+
+  if (args.custom_call_type_id !== undefined) {
+    const callTypes = await client.listCallTypes();
+    validateCallLogCustomTypeId(args.custom_call_type_id, callTypes);
+  }
+
+  const result = await client.updateCallLog(args.call_log_id, args);
+
+  return mapCreateCallLogResult(result);
 }
 
 export async function executeGetCandidateDetails(
@@ -2872,8 +4687,37 @@ export async function executeGetCandidateDetails(
   };
 }
 
-export async function executeGetJobDetails(client: RecruitCrmClient, jobSlug: string): Promise<JobDetail> {
-  return client.getJobDetails(jobSlug);
+export async function executeGetJobDetails(
+  client: RecruitCrmClient,
+  args: GetJobDetailsInput,
+): Promise<JobDetailsResult> {
+  const uniqueSlugs = Array.from(new Set(args.job_slugs));
+  const settled = await Promise.allSettled(uniqueSlugs.map((slug) => client.getJobDetails(slug)));
+
+  const jobs: JobDetail[] = [];
+  const errors: JobDetailsError[] = [];
+
+  settled.forEach((outcome, idx) => {
+    const slug = uniqueSlugs[idx];
+    if (outcome.status === "fulfilled") {
+      jobs.push(outcome.value);
+    } else {
+      const reason = outcome.reason;
+      errors.push({
+        slug,
+        error: reason instanceof Error ? reason.message : String(reason),
+        status_code: reason instanceof RecruitCrmApiError ? reason.statusCode ?? null : null,
+      });
+    }
+  });
+
+  return {
+    requested_count: uniqueSlugs.length,
+    successful_count: jobs.length,
+    failed_count: errors.length,
+    jobs,
+    errors,
+  };
 }
 
 export async function executeGetCompanyDetails(
@@ -3002,6 +4846,941 @@ export async function executeListCandidateHiringStages(
   return mapCandidateHiringStagesResult(result);
 }
 
+export async function executeListPitchStages(client: RecruitCrmClient): Promise<ListPitchStagesResult> {
+  const result = await client.listPitchStages();
+
+  return mapListPitchStagesResult(result);
+}
+
+export async function executePitchCandidateToContact(
+  client: RecruitCrmClient,
+  args: PitchCandidateToContactInput,
+): Promise<PitchCandidateToContactResult> {
+  if (!args.allow_duplicate) {
+    await assertNoExistingCandidateContactPitch(client, args);
+  }
+
+  const result = await client.pitchCandidateToContact(args);
+
+  return mapPitchCandidateToContactResult(result);
+}
+
+export async function executeUpdateCandidatePitchStage(
+  client: RecruitCrmClient,
+  args: UpdateCandidatePitchStageInput,
+): Promise<UpdateCandidatePitchStageResult> {
+  const result = await client.updateCandidatePitchStage(args);
+
+  return mapUpdateCandidatePitchStageResult(result);
+}
+
+export async function executeGetPitchHistory(
+  client: RecruitCrmClient,
+  entityType: PitchEntityType,
+  entitySlug: string,
+): Promise<PitchHistoryResult> {
+  const result = await client.getPitchHistory(entityType, entitySlug);
+
+  return mapPitchHistoryResult(entityType, entitySlug, result);
+}
+
+export async function executeGetPitchedRecords(
+  client: RecruitCrmClient,
+  entityType: PitchEntityType,
+  entitySlug: string,
+): Promise<PitchedRecordsResult> {
+  const result = await client.getPitchedRecords(entityType, entitySlug);
+
+  return mapPitchedRecordsResult(entityType, entitySlug, result);
+}
+
+const PREPARE_CLIENT_BRIEF_DEFAULTS = {
+  lookbackDays: 30,
+  maxOpenJobs: 5,
+  maxRelatedContacts: 15,
+  maxAssignedCandidatesPerJob: 50,
+  feedbackWaitDaysThreshold: 3,
+  contactActivityLimit: 3,
+} as const;
+
+const PREPARE_CLIENT_BRIEF_OPEN_JOB_STATUS = 1;
+const PREPARE_CLIENT_BRIEF_VIEW_URL_PREFIX = "https://app.recruitcrm.io/";
+const PREPARE_CLIENT_BRIEF_CLIENT_FACING_STAGE_MARKERS = [
+  "client",
+  "submit",
+  "shortlist",
+  "cv sent",
+  "resume sent",
+  "interview",
+  "offer",
+] as const;
+
+type PrepareClientBriefJobSummary = SearchJobsResult["jobs"][number];
+type PrepareClientBriefResolvedJobSummary = PrepareClientBriefJobSummary & { slug: string };
+type PrepareClientBriefContactRecord = Record<string, unknown>;
+type PrepareClientBriefRelatedContactState = {
+  relationships: Set<string>;
+  jobSlugs: Set<string>;
+};
+
+export async function executePrepareClientBrief(
+  client: RecruitCrmClient,
+  args: PrepareClientBriefInput,
+): Promise<PrepareClientBriefResult> {
+  if (!args.contact_slug && !args.company_slug) {
+    throw new RecruitCrmApiError("prepare_client_brief requires contact_slug, company_slug, or both.");
+  }
+
+  const lookbackDays = args.lookback_days ?? PREPARE_CLIENT_BRIEF_DEFAULTS.lookbackDays;
+  const maxOpenJobs = args.max_open_jobs ?? PREPARE_CLIENT_BRIEF_DEFAULTS.maxOpenJobs;
+  const maxRelatedContacts = args.max_related_contacts ?? PREPARE_CLIENT_BRIEF_DEFAULTS.maxRelatedContacts;
+  const maxAssignedCandidates =
+    args.max_assigned_candidates_per_job ?? PREPARE_CLIENT_BRIEF_DEFAULTS.maxAssignedCandidatesPerJob;
+  const feedbackWaitDays =
+    args.feedback_wait_days_threshold ?? PREPARE_CLIENT_BRIEF_DEFAULTS.feedbackWaitDaysThreshold;
+  const includeActivity = args.include_activity ?? true;
+  const includePipelineSummary = args.include_pipeline_summary ?? true;
+  const includeContactInfo = args.include_contact_info ?? false;
+
+  const errors: PrepareClientBriefError[] = [];
+  const ownerNames = await fetchAnalyzeUserNameMap(client).catch((error) => {
+    errors.push(buildPrepareClientBriefError("users", error));
+    return new Map<number, string>();
+  });
+
+  let primaryContactDetail: ContactDetail | null = null;
+  if (args.contact_slug) {
+    try {
+      primaryContactDetail = await client.getContactDetails(args.contact_slug);
+    } catch (error) {
+      errors.push(buildPrepareClientBriefError("contact", error, args.contact_slug));
+    }
+  }
+
+  const resolvedCompanySlug =
+    args.company_slug ?? clientBriefString((primaryContactDetail as Record<string, unknown> | null)?.company_slug);
+
+  let companyDetail: CompanyDetail | null = null;
+  if (resolvedCompanySlug) {
+    try {
+      companyDetail = await client.getCompanyDetails(resolvedCompanySlug);
+    } catch (error) {
+      errors.push(buildPrepareClientBriefError("company", error, resolvedCompanySlug));
+    }
+  }
+
+  const relatedContactStates = new Map<string, PrepareClientBriefRelatedContactState>();
+  const contactRecords = new Map<string, PrepareClientBriefContactRecord>();
+  if (primaryContactDetail) {
+    const slug = clientBriefString(primaryContactDetail.slug);
+    if (slug) {
+      contactRecords.set(slug, primaryContactDetail as PrepareClientBriefContactRecord);
+      addPrepareClientBriefContactRelation(relatedContactStates, slug, "input_contact");
+    }
+  } else if (args.contact_slug) {
+    addPrepareClientBriefContactRelation(relatedContactStates, args.contact_slug, "input_contact");
+  }
+
+  if (companyDetail) {
+    for (const slug of clientBriefStringList((companyDetail as Record<string, unknown>).contact_slug)) {
+      addPrepareClientBriefContactRelation(relatedContactStates, slug, "account_contact");
+    }
+  }
+
+  if (resolvedCompanySlug) {
+    try {
+      const companyContacts = await executeSearchContacts(client, {
+        page: 1,
+        limit: maxRelatedContacts,
+        company_slug: resolvedCompanySlug,
+        include_contact_info: includeContactInfo,
+      });
+      for (const contact of companyContacts.contacts) {
+        contactRecords.set(contact.slug, contact as unknown as PrepareClientBriefContactRecord);
+        addPrepareClientBriefContactRelation(relatedContactStates, contact.slug, "account_contact");
+      }
+    } catch (error) {
+      errors.push(buildPrepareClientBriefError("contacts", error, resolvedCompanySlug));
+    }
+  }
+
+  const { jobs, truncated: jobsTruncated } = await fetchPrepareClientBriefJobs(client, {
+    contactSlug: args.contact_slug,
+    companySlug: resolvedCompanySlug,
+    maxOpenJobs,
+    errors,
+  });
+
+  for (const job of jobs) {
+    if (job.contact_slug) {
+      addPrepareClientBriefContactRelation(
+        relatedContactStates,
+        job.contact_slug,
+        "primary_contact_on_job",
+        job.slug,
+      );
+    }
+    for (const slug of job.secondary_contact_slugs) {
+      addPrepareClientBriefContactRelation(
+        relatedContactStates,
+        slug,
+        "secondary_contact_on_job",
+        job.slug,
+      );
+    }
+  }
+
+  const relatedContactSlugs = orderPrepareClientBriefContactSlugs(
+    relatedContactStates,
+    args.contact_slug,
+    maxRelatedContacts,
+  );
+  await fetchPrepareClientBriefContactDetails(client, relatedContactSlugs, contactRecords, errors);
+
+  const activityByEntity = new Map<string, PrepareClientBriefActivitySummary>();
+  if (includeActivity) {
+    const activityEntities: Array<{ entity_type: "company" | "contact" | "job"; entity_slug: string }> = [];
+    if (resolvedCompanySlug) {
+      activityEntities.push({ entity_type: "company", entity_slug: resolvedCompanySlug });
+    }
+
+    const contactActivityLimit = Math.min(
+      PREPARE_CLIENT_BRIEF_DEFAULTS.contactActivityLimit,
+      relatedContactSlugs.length,
+    );
+    for (const slug of relatedContactSlugs.slice(0, contactActivityLimit)) {
+      activityEntities.push({ entity_type: "contact", entity_slug: slug });
+    }
+
+    for (const job of jobs) {
+      activityEntities.push({ entity_type: "job", entity_slug: job.slug });
+    }
+
+    const settled = await Promise.allSettled(
+      activityEntities.map((entity) => fetchPrepareClientBriefActivity(client, entity, lookbackDays)),
+    );
+    settled.forEach((outcome, idx) => {
+      const entity = activityEntities[idx];
+      if (outcome.status === "fulfilled") {
+        activityByEntity.set(clientBriefActivityKey(entity.entity_type, entity.entity_slug), outcome.value);
+      } else {
+        errors.push(buildPrepareClientBriefError("activity", outcome.reason, entity.entity_slug));
+      }
+    });
+  }
+
+  const relatedContacts = relatedContactSlugs
+    .map((slug) =>
+      buildPrepareClientBriefContact({
+        slug,
+        record: contactRecords.get(slug),
+        state: relatedContactStates.get(slug),
+        activity: activityByEntity.get(clientBriefActivityKey("contact", slug)) ?? null,
+        ownerNames,
+        includeContactInfo,
+      }),
+    )
+    .filter((contact): contact is PrepareClientBriefContact => contact !== null);
+
+  const contactBySlug = new Map<string, PrepareClientBriefContact>();
+  for (const contact of relatedContacts) contactBySlug.set(contact.slug, contact);
+
+  let assignedCandidatePagesChecked = 0;
+  let assignmentsTruncated = false;
+  const briefJobs: PrepareClientBriefJob[] = [];
+  for (const job of jobs) {
+    let pipeline: PrepareClientBriefJobPipelineSummary | null = null;
+    if (includePipelineSummary) {
+      try {
+        const assigned = await executeGetJobAssignedCandidates(client, job.slug, {
+          page: 1,
+          limit: maxAssignedCandidates,
+        });
+        assignedCandidatePagesChecked += 1;
+        assignmentsTruncated = assignmentsTruncated || assigned.has_more;
+        pipeline = buildPrepareClientBriefPipelineSummary(
+          assigned.assigned_candidates,
+          assigned.has_more,
+          feedbackWaitDays,
+        );
+      } catch (error) {
+        errors.push(buildPrepareClientBriefError("assignments", error, job.slug));
+      }
+    }
+
+    const activity = activityByEntity.get(clientBriefActivityKey("job", job.slug)) ?? null;
+    briefJobs.push(
+      buildPrepareClientBriefJob({
+        job,
+        pipeline,
+        activity,
+        contactBySlug,
+        ownerNames,
+        feedbackWaitDays,
+      }),
+    );
+  }
+
+  let pitchedCandidates: PrepareClientBriefResult["pitched_candidates"] = null;
+  if (args.contact_slug) {
+    try {
+      const pitched = await executeGetPitchedRecords(client, "contact", args.contact_slug);
+      pitchedCandidates = {
+        returned_count: pitched.returned_count,
+        records: pitched.records,
+      };
+    } catch (error) {
+      errors.push(buildPrepareClientBriefError("pitch", error, args.contact_slug));
+    }
+  }
+
+  const activity = Array.from(activityByEntity.values());
+  const primaryContact = args.contact_slug ? contactBySlug.get(args.contact_slug) ?? null : null;
+  const clientCompany = companyDetail
+    ? buildPrepareClientBriefCompany(companyDetail, ownerNames)
+    : resolvedCompanySlug
+      ? {
+          slug: resolvedCompanySlug,
+          name: null,
+          owner: null,
+          owner_name: null,
+          city: null,
+          state: null,
+          country: null,
+          website: null,
+          marked_as_off_limit: null,
+          view_url: clientBriefEntityViewUrl("company", resolvedCompanySlug),
+        }
+      : null;
+
+  const accountHealth = buildPrepareClientBriefAccountHealth({
+    jobs: briefJobs,
+    activity,
+    lookbackDays,
+  });
+  const suggested = buildPrepareClientBriefSuggestedTalkingPoints({
+    jobs: briefJobs,
+    primaryContact,
+    company: clientCompany,
+    accountHealth,
+    pitchedCandidates,
+  });
+  const followups = buildPrepareClientBriefRecommendedFollowups({
+    jobs: briefJobs,
+    companySlug: resolvedCompanySlug,
+    contactSlug: args.contact_slug,
+  });
+
+  return {
+    brief_type: "client",
+    scope: {
+      input_contact_slug: args.contact_slug ?? null,
+      input_company_slug: args.company_slug ?? null,
+      resolved_company_slug: resolvedCompanySlug ?? null,
+      lookback_days: lookbackDays,
+      generated_at: new Date().toISOString(),
+    },
+    client: {
+      company: clientCompany,
+      primary_contact: primaryContact,
+      related_contacts: relatedContacts,
+    },
+    account_health: accountHealth,
+    jobs: briefJobs,
+    pitched_candidates: pitchedCandidates,
+    activity,
+    suggested_talking_points: suggested,
+    recommended_followups: followups,
+    coverage: {
+      jobs_checked: briefJobs.length,
+      jobs_truncated: jobsTruncated,
+      related_contacts_checked: relatedContacts.length,
+      activity_entities_checked: activity.length,
+      assigned_candidate_pages_checked: assignedCandidatePagesChecked,
+      assignments_truncated: assignmentsTruncated,
+      included_contact_info: includeContactInfo,
+    },
+    errors,
+  };
+}
+
+async function fetchPrepareClientBriefJobs(
+  client: RecruitCrmClient,
+  input: {
+    contactSlug?: string;
+    companySlug?: string | null;
+    maxOpenJobs: number;
+    errors: PrepareClientBriefError[];
+  },
+): Promise<{ jobs: PrepareClientBriefResolvedJobSummary[]; truncated: boolean }> {
+  const jobsBySlug = new Map<string, PrepareClientBriefResolvedJobSummary>();
+  let truncated = false;
+
+  const runSearch = async (filters: SearchJobsInput): Promise<void> => {
+    try {
+      const result = await executeSearchJobs(client, {
+        page: 1,
+        limit: input.maxOpenJobs,
+        job_status: PREPARE_CLIENT_BRIEF_OPEN_JOB_STATUS,
+        sort_by: "updatedon",
+        sort_order: "desc",
+        ...filters,
+      });
+      truncated = truncated || result.has_more;
+      for (const job of result.jobs) {
+        if (job.slug && !jobsBySlug.has(job.slug)) {
+          jobsBySlug.set(job.slug, job as PrepareClientBriefResolvedJobSummary);
+        }
+      }
+    } catch (error) {
+      input.errors.push(buildPrepareClientBriefError("jobs", error, filters.company_slug ?? filters.contact_slug ?? filters.secondary_contact_slug));
+    }
+  };
+
+  if (input.companySlug) {
+    await runSearch({ company_slug: input.companySlug });
+  } else if (input.contactSlug) {
+    await runSearch({ contact_slug: input.contactSlug });
+    await runSearch({ secondary_contact_slug: input.contactSlug });
+  }
+
+  return {
+    jobs: Array.from(jobsBySlug.values()).slice(0, input.maxOpenJobs),
+    truncated: truncated || jobsBySlug.size > input.maxOpenJobs,
+  };
+}
+
+async function fetchPrepareClientBriefContactDetails(
+  client: RecruitCrmClient,
+  slugs: string[],
+  contactRecords: Map<string, PrepareClientBriefContactRecord>,
+  errors: PrepareClientBriefError[],
+): Promise<void> {
+  const toFetch = slugs.filter((slug) => {
+    const existing = contactRecords.get(slug);
+    return !existing || existing.owner === undefined;
+  });
+  const settled = await Promise.allSettled(toFetch.map((slug) => client.getContactDetails(slug)));
+  settled.forEach((outcome, idx) => {
+    const slug = toFetch[idx];
+    if (outcome.status === "fulfilled") {
+      contactRecords.set(slug, outcome.value as PrepareClientBriefContactRecord);
+    } else {
+      errors.push(buildPrepareClientBriefError("contacts", outcome.reason, slug));
+    }
+  });
+}
+
+function addPrepareClientBriefContactRelation(
+  map: Map<string, PrepareClientBriefRelatedContactState>,
+  slug: string | null | undefined,
+  relationship: string,
+  jobSlug?: string | null,
+): void {
+  if (!slug) return;
+  let state = map.get(slug);
+  if (!state) {
+    state = { relationships: new Set<string>(), jobSlugs: new Set<string>() };
+    map.set(slug, state);
+  }
+  state.relationships.add(relationship);
+  if (jobSlug) state.jobSlugs.add(jobSlug);
+}
+
+function orderPrepareClientBriefContactSlugs(
+  states: Map<string, PrepareClientBriefRelatedContactState>,
+  inputContactSlug: string | undefined,
+  maxRelatedContacts: number,
+): string[] {
+  const slugs = Array.from(states.keys());
+  slugs.sort((a, b) => {
+    if (a === inputContactSlug) return -1;
+    if (b === inputContactSlug) return 1;
+    const aState = states.get(a);
+    const bState = states.get(b);
+    const aJob = aState?.jobSlugs.size ?? 0;
+    const bJob = bState?.jobSlugs.size ?? 0;
+    if (aJob !== bJob) return bJob - aJob;
+    return a.localeCompare(b);
+  });
+  return slugs.slice(0, maxRelatedContacts);
+}
+
+function buildPrepareClientBriefCompany(
+  company: CompanyDetail,
+  ownerNames: Map<number, string>,
+): PrepareClientBriefCompany {
+  const raw = company as Record<string, unknown>;
+  const slug = clientBriefString(raw.slug);
+  const owner = toAnalyzeFiniteNumber(raw.owner);
+  return {
+    slug,
+    name: clientBriefString(raw.company_name),
+    owner,
+    owner_name: owner !== null ? ownerNames.get(owner) ?? null : null,
+    city: clientBriefString(raw.city),
+    state: clientBriefString(raw.state),
+    country: clientBriefString(raw.country),
+    website: clientBriefString(raw.website),
+    marked_as_off_limit: clientBriefMarkedAsOffLimit(raw),
+    view_url: clientBriefString(raw.resource_url) ?? (slug ? clientBriefEntityViewUrl("company", slug) : null),
+  };
+}
+
+function buildPrepareClientBriefContact(input: {
+  slug: string;
+  record: PrepareClientBriefContactRecord | undefined;
+  state: PrepareClientBriefRelatedContactState | undefined;
+  activity: PrepareClientBriefActivitySummary | null;
+  ownerNames: Map<number, string>;
+  includeContactInfo: boolean;
+}): PrepareClientBriefContact | null {
+  const record = input.record ?? { slug: input.slug };
+  const owner = toAnalyzeFiniteNumber(record.owner);
+  const firstName = clientBriefString(record.first_name);
+  const lastName = clientBriefString(record.last_name);
+  const out: PrepareClientBriefContact = {
+    slug: input.slug,
+    name: buildAnalyzeName(firstName, lastName) ?? clientBriefString(record.name),
+    designation: clientBriefString(record.designation),
+    company_slug: clientBriefString(record.company_slug),
+    owner,
+    owner_name: owner !== null ? input.ownerNames.get(owner) ?? null : null,
+    view_url: clientBriefString(record.resource_url) ?? clientBriefEntityViewUrl("contact", input.slug),
+    relationships: Array.from(input.state?.relationships ?? []).sort(),
+    job_slugs: Array.from(input.state?.jobSlugs ?? []).sort(),
+    last_activity_at: input.activity?.last_touch_at ?? clientBriefString(record.last_communication),
+  };
+
+  if (input.includeContactInfo) {
+    out.email = clientBriefString(record.email);
+    out.contact_number = clientBriefString(record.contact_number);
+    out.linkedin = clientBriefString(record.linkedin);
+  }
+
+  return out;
+}
+
+function buildPrepareClientBriefJob(input: {
+  job: PrepareClientBriefResolvedJobSummary;
+  pipeline: PrepareClientBriefJobPipelineSummary | null;
+  activity: PrepareClientBriefActivitySummary | null;
+  contactBySlug: Map<string, PrepareClientBriefContact>;
+  ownerNames: Map<number, string>;
+  feedbackWaitDays: number;
+}): PrepareClientBriefJob {
+  const job = input.job;
+  const owner = job.owner;
+  const primary = job.contact_slug ? input.contactBySlug.get(job.contact_slug) ?? null : null;
+  const secondary = job.secondary_contact_slugs
+    .map((slug) => input.contactBySlug.get(slug) ?? null)
+    .filter((contact): contact is PrepareClientBriefContact => contact !== null);
+
+  const risks: string[] = [];
+  const talkingPoints: string[] = [];
+  const waiting = input.pipeline?.candidates_waiting_on_client ?? [];
+  if (waiting.length > 0) {
+    risks.push(`${waiting.length} candidate(s) waiting on client-facing feedback.`);
+    talkingPoints.push(
+      `Ask for feedback on ${waiting.slice(0, 3).map((c) => c.name ?? c.candidate_slug).join(", ")}.`,
+    );
+  }
+  if (input.pipeline && input.pipeline.active_count === 0) {
+    risks.push("No active candidates in this job pipeline.");
+    talkingPoints.push("Confirm whether this role is still active and whether requirements should be recalibrated.");
+  }
+  if (secondary.length > 0) {
+    talkingPoints.push("Confirm which primary or secondary contact owns candidate feedback for this job.");
+  }
+  if (input.activity && input.activity.last_touch_at === null) {
+    risks.push("No recent notes, meetings, or calls found in the lookback window.");
+  }
+
+  return {
+    slug: job.slug,
+    name: job.name,
+    status_label: job.job_status?.label ?? null,
+    days_open: job.created_on ? analyzeDaysBetween(job.created_on) : null,
+    number_of_openings: job.number_of_openings,
+    owner,
+    owner_name: owner !== null ? input.ownerNames.get(owner) ?? null : null,
+    company_slug: job.company_slug,
+    contact_slug: job.contact_slug,
+    secondary_contact_slugs: job.secondary_contact_slugs,
+    hiring_pipeline_id: job.hiring_pipeline_id,
+    view_url: clientBriefEntityViewUrl("job", job.slug),
+    primary_contact: primary ? stripPrepareClientBriefContactForJob(primary) : null,
+    secondary_contacts: secondary.map(stripPrepareClientBriefContactForJob),
+    pipeline_summary: input.pipeline,
+    activity: input.activity,
+    risks,
+    talking_points: talkingPoints,
+  };
+}
+
+function stripPrepareClientBriefContactForJob(contact: PrepareClientBriefContact): PrepareClientBriefJobContact {
+  const out: PrepareClientBriefJobContact = {
+    slug: contact.slug,
+    name: contact.name,
+    designation: contact.designation,
+    company_slug: contact.company_slug,
+    owner: contact.owner,
+    owner_name: contact.owner_name,
+    view_url: contact.view_url,
+  };
+  if (contact.email !== undefined) out.email = contact.email;
+  if (contact.contact_number !== undefined) out.contact_number = contact.contact_number;
+  if (contact.linkedin !== undefined) out.linkedin = contact.linkedin;
+  return out;
+}
+
+function buildPrepareClientBriefPipelineSummary(
+  assignedCandidates: AssignedCandidateSummary[],
+  hasMore: boolean,
+  feedbackWaitDays: number,
+): PrepareClientBriefJobPipelineSummary {
+  const terminalLabels = ANALYZE_JOB_PIPELINE_DEFAULTS.terminalStageLabels.map((label) => label.toLowerCase());
+  const stageMap = new Map<
+    string,
+    { stage_id: number | null; label: string; candidates: PrepareClientBriefWaitingCandidate[]; days: number[] }
+  >();
+  let terminalCount = 0;
+
+  for (const candidate of assignedCandidates) {
+    if (isAnalyzeTerminal(candidate.status_label, terminalLabels)) {
+      terminalCount += 1;
+      continue;
+    }
+
+    const label = candidate.status_label ?? "Unknown";
+    const key = `${candidate.status_id ?? "null"}::${label}`;
+    let stage = stageMap.get(key);
+    if (!stage) {
+      stage = { stage_id: candidate.status_id, label, candidates: [], days: [] };
+      stageMap.set(key, stage);
+    }
+    const days = candidate.stage_date ? analyzeDaysBetween(candidate.stage_date) : null;
+    if (days !== null) stage.days.push(days);
+    stage.candidates.push({
+      candidate_slug: candidate.candidate_slug,
+      name: buildAnalyzeName(candidate.first_name, candidate.last_name),
+      current_stage: candidate.status_label,
+      days_in_current_stage: days,
+      last_activity_at: candidate.updated_on,
+    });
+  }
+
+  const stages = Array.from(stageMap.values());
+  const stageCounts = stages
+    .map((stage) => ({
+      stage_id: stage.stage_id,
+      label: stage.label,
+      count: stage.candidates.length,
+      median_days_in_stage: stage.days.length > 0 ? analyzeMedian(stage.days) : null,
+    }))
+    .sort((a, b) => b.count - a.count);
+
+  const bottleneck = stageCounts[0]
+    ? {
+        stage_label: stageCounts[0].label,
+        count: stageCounts[0].count,
+        median_days_in_stage: stageCounts[0].median_days_in_stage,
+        reason: `Largest active stage (${stageCounts[0].count} candidates).`,
+      }
+    : null;
+
+  const waiting = stages
+    .filter((stage) => isPrepareClientBriefClientFacingStage(stage.label))
+    .flatMap((stage) => stage.candidates)
+    .filter(
+      (candidate) =>
+        candidate.days_in_current_stage !== null && candidate.days_in_current_stage >= feedbackWaitDays,
+    )
+    .sort((a, b) => (b.days_in_current_stage ?? 0) - (a.days_in_current_stage ?? 0));
+
+  const activeCount = stages.reduce((sum, stage) => sum + stage.candidates.length, 0);
+  return {
+    assigned_count: assignedCandidates.length,
+    active_count: activeCount,
+    terminal_count: terminalCount,
+    stage_counts: stageCounts,
+    bottleneck,
+    candidates_waiting_on_client: waiting,
+    has_more_assigned_candidates: hasMore,
+  };
+}
+
+async function fetchPrepareClientBriefActivity(
+  client: RecruitCrmClient,
+  entity: { entity_type: "company" | "contact" | "job"; entity_slug: string },
+  lookbackDays: number,
+): Promise<PrepareClientBriefActivitySummary> {
+  const since = analyzeIsoDaysAgo(lookbackDays);
+  const notesPromise = executeSearchNotes(client, {
+    page: 1,
+    related_to: entity.entity_slug,
+    related_to_type: entity.entity_type,
+    updated_from: since,
+  });
+  const meetingsPromise = executeSearchMeetings(client, {
+    page: 1,
+    related_to: entity.entity_slug,
+    related_to_type: entity.entity_type,
+    updated_from: since,
+  });
+  const tasksPromise = executeSearchTasks(client, {
+    page: 1,
+    related_to: entity.entity_slug,
+    related_to_type: entity.entity_type,
+    updated_from: since,
+  });
+  const callLogsPromise =
+    entity.entity_type === "job"
+      ? Promise.resolve({ page: 1, returned_count: 0, has_more: false, call_logs: [] } satisfies SearchCallLogsResult)
+      : executeSearchCallLogs(client, {
+          page: 1,
+          related_to: entity.entity_slug,
+          related_to_type: entity.entity_type,
+          updated_from: since,
+        });
+
+  const [notes, meetings, tasks, callLogs] = await Promise.all([
+    notesPromise,
+    meetingsPromise,
+    tasksPromise,
+    callLogsPromise,
+  ]);
+
+  const lastNoteAt = pickLatestString(notes.notes.flatMap((note) => [note.updated_on, note.created_on]));
+  const lastMeetingAt = pickLatestString(
+    meetings.meetings.flatMap((meeting) => [meeting.start_date, meeting.updated_on, meeting.created_on]),
+  );
+  const lastCallAt = pickLatestString(
+    callLogs.call_logs.flatMap((call) => [call.call_started_on, call.updated_on, call.created_on]),
+  );
+  const nextTaskDueAt = pickEarliestFutureString(tasks.tasks.map((task) => task.start_date));
+
+  return {
+    entity_type: entity.entity_type,
+    entity_slug: entity.entity_slug,
+    notes_count: notes.returned_count,
+    meetings_count: meetings.returned_count,
+    tasks_count: tasks.returned_count,
+    call_logs_count: callLogs.returned_count,
+    last_note_at: lastNoteAt,
+    last_meeting_at: lastMeetingAt,
+    last_call_at: lastCallAt,
+    next_task_due_at: nextTaskDueAt,
+    last_touch_at: pickLatestString([lastNoteAt, lastMeetingAt, lastCallAt]),
+  };
+}
+
+function buildPrepareClientBriefAccountHealth(input: {
+  jobs: PrepareClientBriefJob[];
+  activity: PrepareClientBriefActivitySummary[];
+  lookbackDays: number;
+}): PrepareClientBriefResult["account_health"] {
+  const activeCandidates = input.jobs.reduce((sum, job) => sum + (job.pipeline_summary?.active_count ?? 0), 0);
+  const waitingCandidates = input.jobs.reduce(
+    (sum, job) => sum + (job.pipeline_summary?.candidates_waiting_on_client.length ?? 0),
+    0,
+  );
+  const noActiveJobs = input.jobs.filter((job) => job.pipeline_summary?.active_count === 0).length;
+  const lastTouchAt = pickLatestString(input.activity.map((activity) => activity.last_touch_at));
+  const nextTaskDueAt = pickEarliestFutureString(input.activity.map((activity) => activity.next_task_due_at));
+
+  const reasons: string[] = [];
+  if (waitingCandidates > 0) reasons.push(`${waitingCandidates} candidate(s) waiting on client-facing feedback.`);
+  if (noActiveJobs > 0) reasons.push(`${noActiveJobs} open job(s) have no active candidates in the checked window.`);
+  if (input.jobs.length > 0 && lastTouchAt === null) {
+    reasons.push(`No recent notes, meetings, or calls found in the last ${input.lookbackDays} days.`);
+  }
+
+  const relationshipRisk =
+    waitingCandidates >= 3 || (input.jobs.length > 0 && lastTouchAt === null)
+      ? "high"
+      : waitingCandidates > 0 || noActiveJobs > 0
+        ? "medium"
+        : "low";
+
+  return {
+    open_jobs_count: input.jobs.length,
+    jobs_returned: input.jobs.length,
+    active_candidates_count: activeCandidates,
+    candidates_waiting_on_client_count: waitingCandidates,
+    last_touch_at: lastTouchAt,
+    next_task_due_at: nextTaskDueAt,
+    relationship_risk: relationshipRisk,
+    relationship_risk_reasons: reasons,
+  };
+}
+
+function buildPrepareClientBriefSuggestedTalkingPoints(input: {
+  jobs: PrepareClientBriefJob[];
+  primaryContact: PrepareClientBriefContact | null;
+  company: PrepareClientBriefCompany | null;
+  accountHealth: PrepareClientBriefResult["account_health"];
+  pitchedCandidates: PrepareClientBriefResult["pitched_candidates"];
+}): string[] {
+  const out: string[] = [];
+  const waitingJobs = input.jobs.filter(
+    (job) => (job.pipeline_summary?.candidates_waiting_on_client.length ?? 0) > 0,
+  );
+  if (waitingJobs.length > 0) {
+    const first = waitingJobs[0];
+    const names = first.pipeline_summary?.candidates_waiting_on_client
+      .slice(0, 3)
+      .map((candidate) => candidate.name ?? candidate.candidate_slug)
+      .join(", ");
+    out.push(`Ask for feedback on ${names} for ${first.name ?? first.slug}.`);
+  }
+
+  const thinJobs = input.jobs.filter((job) => job.pipeline_summary?.active_count === 0);
+  if (thinJobs.length > 0) {
+    out.push(`Confirm whether ${thinJobs[0].name ?? thinJobs[0].slug} is still active or needs recalibration.`);
+  }
+
+  if (input.jobs.some((job) => job.secondary_contacts.length > 0)) {
+    out.push("Confirm which primary or secondary client contact owns feedback and next steps for each open job.");
+  }
+
+  if (input.accountHealth.last_touch_at === null && input.jobs.length > 0) {
+    out.push("Use the call to reset priorities because no recent client touchpoint was found in the lookback window.");
+  }
+
+  if (input.pitchedCandidates && input.pitchedCandidates.returned_count > 0) {
+    out.push(`Review ${input.pitchedCandidates.returned_count} pitched candidate(s) tied to this contact.`);
+  }
+
+  if (out.length === 0) {
+    const label = input.primaryContact?.name ?? input.company?.name ?? "the client";
+    out.push(`Confirm priorities, open-role urgency, and expected feedback timing with ${label}.`);
+  }
+
+  return out;
+}
+
+function buildPrepareClientBriefRecommendedFollowups(input: {
+  jobs: PrepareClientBriefJob[];
+  companySlug: string | null | undefined;
+  contactSlug: string | null | undefined;
+}): PrepareClientBriefResult["recommended_followups"] {
+  const out: PrepareClientBriefResult["recommended_followups"] = [];
+  const waitingJob = input.jobs.find((job) => (job.pipeline_summary?.candidates_waiting_on_client.length ?? 0) > 0);
+  if (waitingJob) {
+    out.push({
+      action: "create_task",
+      reason: "Chase client feedback for candidates waiting in client-facing stages.",
+      related_to_type: "job",
+      related_to: waitingJob.slug,
+    });
+  }
+
+  const thinJob = input.jobs.find((job) => job.pipeline_summary?.active_count === 0);
+  if (thinJob) {
+    out.push({
+      action: "review_pipeline",
+      reason: "Review sourcing plan because this open job has no active candidates in the checked window.",
+      related_to_type: "job",
+      related_to: thinJob.slug,
+    });
+  }
+
+  const noteTarget = input.companySlug ?? input.contactSlug;
+  if (noteTarget) {
+    out.push({
+      action: "create_note",
+      reason: "Log the client conversation, changed priorities, and feedback commitments after the call.",
+      related_to_type: input.companySlug ? "company" : "contact",
+      related_to: noteTarget,
+    });
+  }
+
+  return out;
+}
+
+function isPrepareClientBriefClientFacingStage(label: string | null): boolean {
+  if (!label) return false;
+  const normalized = label.trim().toLowerCase();
+  return PREPARE_CLIENT_BRIEF_CLIENT_FACING_STAGE_MARKERS.some((marker) => normalized.includes(marker));
+}
+
+function buildPrepareClientBriefError(
+  source: PrepareClientBriefError["source"],
+  reason: unknown,
+  slug?: string | null,
+): PrepareClientBriefError {
+  return {
+    source,
+    slug: slug ?? undefined,
+    message: reason instanceof Error ? reason.message : String(reason),
+    status_code: reason instanceof RecruitCrmApiError ? reason.statusCode ?? null : null,
+  };
+}
+
+function clientBriefActivityKey(entityType: string, entitySlug: string): string {
+  return `${entityType}:${entitySlug}`;
+}
+
+function clientBriefString(value: unknown): string | null {
+  if (typeof value === "string") {
+    const trimmed = value.trim();
+    return trimmed.length > 0 ? trimmed : null;
+  }
+  if (typeof value === "number" && Number.isFinite(value)) return String(value);
+  return null;
+}
+
+function clientBriefStringList(value: unknown): string[] {
+  if (Array.isArray(value)) {
+    return value.map(clientBriefString).filter((item): item is string => item !== null);
+  }
+  const single = clientBriefString(value);
+  return single ? [single] : [];
+}
+
+function clientBriefMarkedAsOffLimit(raw: Record<string, unknown>): boolean | null {
+  if (!("off_limit_status_id" in raw) && !("status_label" in raw)) return null;
+  const statusId = clientBriefString(raw.off_limit_status_id);
+  const statusLabel = clientBriefString(raw.status_label);
+  return statusId !== null || statusLabel !== null;
+}
+
+function clientBriefEntityViewUrl(entityType: string, slug: string): string {
+  return `${PREPARE_CLIENT_BRIEF_VIEW_URL_PREFIX}${entityType}/${slug}`;
+}
+
+function pickLatestString(values: Array<string | null | undefined>): string | null {
+  let best: string | null = null;
+  let bestMs = -Infinity;
+  for (const value of values) {
+    if (!value) continue;
+    const ms = Date.parse(value);
+    if (Number.isNaN(ms)) continue;
+    if (ms > bestMs) {
+      bestMs = ms;
+      best = value;
+    }
+  }
+  return best;
+}
+
+function pickEarliestFutureString(values: Array<string | null | undefined>): string | null {
+  const now = Date.now();
+  let best: string | null = null;
+  let bestMs = Infinity;
+  for (const value of values) {
+    if (!value) continue;
+    const ms = Date.parse(value);
+    if (Number.isNaN(ms) || ms < now) continue;
+    if (ms < bestMs) {
+      bestMs = ms;
+      best = value;
+    }
+  }
+  return best;
+}
+
 export async function executeAssignCandidateToJob(
   client: RecruitCrmClient,
   args: AssignCandidateToJobInput,
@@ -3040,6 +5819,322 @@ export async function executeListJobStatuses(
   return mapJobStatusesResult(result);
 }
 
+function validateJobMutationInput(args: CreateJobInput | UpdateJobInput): void {
+  if (args.secondary_contact_slugs && args.secondary_contact_slugs.length > 0 && !args.company_slug) {
+    throw new RecruitCrmApiError("company_slug is required when secondary_contact_slugs are provided.");
+  }
+
+  if (
+    args.minimum_experience !== undefined &&
+    args.maximum_experience !== undefined &&
+    args.minimum_experience > args.maximum_experience
+  ) {
+    throw new RecruitCrmApiError("minimum_experience cannot be greater than maximum_experience.");
+  }
+
+  if (
+    args.min_annual_salary !== undefined &&
+    args.max_annual_salary !== undefined &&
+    args.min_annual_salary > args.max_annual_salary
+  ) {
+    throw new RecruitCrmApiError("min_annual_salary cannot be greater than max_annual_salary.");
+  }
+}
+
+function validateUpdateJobHasFields(args: UpdateJobInput): void {
+  const ignoredFields = new Set(["job_slug", "updated_by"]);
+  const hasUpdateField = Object.entries(args).some(
+    ([key, value]) => !ignoredFields.has(key) && value !== undefined,
+  );
+
+  if (!hasUpdateField) {
+    throw new RecruitCrmApiError("update_job requires at least one field to update in addition to job_slug and updated_by.");
+  }
+}
+
+async function assertNoExistingCandidateContactPitch(
+  client: RecruitCrmClient,
+  args: PitchCandidateToContactInput,
+): Promise<void> {
+  let response;
+  try {
+    response = await client.getPitchedRecords("candidate", args.candidate_slug);
+  } catch (error) {
+    throw new RecruitCrmApiError(
+      "Unable to complete duplicate check for pitch_candidate_to_contact. Try get_pitched_records manually before pitching, or call pitch_candidate_to_contact with allow_duplicate=true to create another pitch row.",
+      error instanceof RecruitCrmApiError ? error.statusCode : undefined,
+      error,
+    );
+  }
+
+  const existing = (response.data?.records ?? []).find((record) => {
+    if (record.contact_slug == null) return false;
+    return String(record.contact_slug) === args.contact_slug;
+  });
+
+  if (!existing) {
+    return;
+  }
+
+  const labels = [
+    `candidate_slug: ${args.candidate_slug}`,
+    `contact_slug: ${args.contact_slug}`,
+    existing.status_id != null ? `status_id: ${existing.status_id}` : null,
+    existing.status_label != null
+      ? `status_label: ${existing.status_label}`
+      : existing.candidate_status != null
+        ? `status_label: ${existing.candidate_status}`
+        : null,
+    existing.stage_date != null ? `stage_date: ${existing.stage_date}` : null,
+    existing.created_on != null ? `created_on: ${existing.created_on}` : null,
+    existing.updated_on != null ? `updated_on: ${existing.updated_on}` : null,
+  ].filter((label): label is string => label !== null);
+
+  throw new RecruitCrmApiError(
+    `Potential duplicate pitch found before pitch_candidate_to_contact: ${labels.join(", ")}. To create another pitch row for the same candidate/contact pair, call pitch_candidate_to_contact with allow_duplicate=true.`,
+  );
+}
+
+type CreateCompanyDuplicateSearchField = "company_name";
+
+type CreateCompanyDuplicateMatch = {
+  slug: string;
+  id: number | string | null;
+  company_name: string | null;
+  matched_on: CreateCompanyDuplicateSearchField[];
+};
+
+async function assertNoCreateCompanyDuplicates(
+  client: RecruitCrmClient,
+  args: CreateCompanyInput,
+): Promise<void> {
+  const duplicateFields: Array<{ field: CreateCompanyDuplicateSearchField; value: string | undefined }> = [
+    { field: "company_name", value: args.company_name },
+  ].filter((item): item is { field: CreateCompanyDuplicateSearchField; value: string } => item.value !== undefined);
+
+  if (duplicateFields.length === 0) {
+    return;
+  }
+
+  const matches = new Map<string, CreateCompanyDuplicateMatch>();
+
+  for (const { field, value } of duplicateFields) {
+    let response;
+    const filters: SearchCompaniesInput = {
+      page: 1,
+      exact_search: true,
+      sort_by: "updatedon",
+      sort_order: "desc",
+    };
+    filters[field] = value;
+
+    try {
+      response = await client.searchCompanies(filters);
+    } catch (error) {
+      throw new RecruitCrmApiError(
+        `Unable to complete duplicate check for create_company using ${field}. Try search_companies manually before creating the company.`,
+        error instanceof RecruitCrmApiError ? error.statusCode : undefined,
+        error,
+      );
+    }
+
+    for (const company of response.data) {
+      const slug = company.slug != null ? String(company.slug) : null;
+      if (!slug) continue;
+
+      const existing = matches.get(slug);
+      if (existing) {
+        if (!existing.matched_on.includes(field)) {
+          existing.matched_on.push(field);
+        }
+        continue;
+      }
+
+      matches.set(slug, {
+        slug,
+        id: company.id ?? null,
+        company_name: normalizeDuplicateCandidateName(company.company_name),
+        matched_on: [field],
+      });
+    }
+  }
+
+  if (matches.size === 0) {
+    return;
+  }
+
+  const examples = Array.from(matches.values())
+    .slice(0, 5)
+    .map((match) => {
+      const idLabel = match.id != null ? String(match.id) : "unavailable";
+      const label = match.company_name
+        ? `company_slug: ${match.slug} (company_id: ${idLabel}, ${match.company_name})`
+        : `company_slug: ${match.slug} (company_id: ${idLabel})`;
+      return `${label} matched on ${match.matched_on.join(", ")}`;
+    })
+    .join("; ");
+
+  throw new RecruitCrmApiError(
+    `Potential duplicate company found before create_company: ${examples}. To create a confirmed duplicate, call create_company with allow_duplicate=true. To update the existing record, call update_company with company_slug set to the chosen company slug.`,
+  );
+}
+
+type CreateContactDuplicateSearchField = "email" | "contact_number" | "linkedin";
+
+type CreateContactDuplicateMatch = {
+  slug: string;
+  id: number | string | null;
+  first_name: string | null;
+  last_name: string | null;
+  matched_on: CreateContactDuplicateSearchField[];
+};
+
+async function assertNoCreateContactDuplicates(
+  client: RecruitCrmClient,
+  args: CreateContactInput,
+): Promise<void> {
+  const duplicateFields: Array<{ field: CreateContactDuplicateSearchField; value: string | undefined }> = [
+    { field: "email", value: args.email },
+    { field: "contact_number", value: args.contact_number },
+    { field: "linkedin", value: args.linkedin },
+  ].filter((item): item is { field: CreateContactDuplicateSearchField; value: string } => item.value !== undefined);
+
+  if (duplicateFields.length === 0) {
+    return;
+  }
+
+  const matches = new Map<string, CreateContactDuplicateMatch>();
+
+  for (const { field, value } of duplicateFields) {
+    let response;
+    const filters: SearchContactsInput = {
+      page: 1,
+      exact_search: true,
+      sort_by: "updatedon",
+      sort_order: "desc",
+    };
+    filters[field] = value;
+
+    try {
+      response = await client.searchContacts(filters);
+    } catch (error) {
+      throw new RecruitCrmApiError(
+        `Unable to complete duplicate check for create_contact using ${field}. Try search_contacts manually before creating the contact.`,
+        error instanceof RecruitCrmApiError ? error.statusCode : undefined,
+        error,
+      );
+    }
+
+    for (const contact of response.data) {
+      const slug = contact.slug != null ? String(contact.slug) : null;
+      if (!slug) continue;
+
+      const existing = matches.get(slug);
+      if (existing) {
+        if (!existing.matched_on.includes(field)) {
+          existing.matched_on.push(field);
+        }
+        continue;
+      }
+
+      matches.set(slug, {
+        slug,
+        id: contact.id ?? null,
+        first_name: normalizeDuplicateCandidateName(contact.first_name),
+        last_name: normalizeDuplicateCandidateName(contact.last_name),
+        matched_on: [field],
+      });
+    }
+  }
+
+  if (matches.size === 0) {
+    return;
+  }
+
+  const examples = Array.from(matches.values())
+    .slice(0, 5)
+    .map((match) => {
+      const name = [match.first_name, match.last_name].filter(Boolean).join(" ");
+      const idLabel = match.id != null ? String(match.id) : "unavailable";
+      const label = name
+        ? `contact_slug: ${match.slug} (contact_id: ${idLabel}, ${name})`
+        : `contact_slug: ${match.slug} (contact_id: ${idLabel})`;
+      return `${label} matched on ${match.matched_on.join(", ")}`;
+    })
+    .join("; ");
+
+  throw new RecruitCrmApiError(
+    `Potential duplicate contact found before create_contact: ${examples}. To create a confirmed duplicate, call create_contact with allow_duplicate=true. To update the existing record, call update_contact with contact_slug set to the chosen contact slug.`,
+  );
+}
+
+export async function executeCreateContact(
+  client: RecruitCrmClient,
+  args: CreateContactInput,
+): Promise<CreateContactResult> {
+  if (!args.allow_duplicate) {
+    await assertNoCreateContactDuplicates(client, args);
+  }
+  const contact = await client.createContact(args);
+  return mapCreatedContactResult(contact, "created");
+}
+
+export async function executeUpdateContact(
+  client: RecruitCrmClient,
+  args: UpdateContactInput,
+): Promise<CreateContactResult> {
+  const contact = await client.updateContact(args.contact_slug, args);
+  return mapCreatedContactResult(contact, "updated");
+}
+
+export async function executeListContactStages(
+  client: RecruitCrmClient,
+): Promise<ListContactStagesResult> {
+  const result = await client.listContactStages();
+  return mapListContactStagesResult(result);
+}
+
+export async function executeListOffLimitStatuses(
+  client: RecruitCrmClient,
+): Promise<ListOffLimitStatusesResult> {
+  const result = await client.listOffLimitStatuses();
+  return mapListOffLimitStatusesResult(result);
+}
+
+export async function executeMarkCandidateOffLimit(
+  client: RecruitCrmClient,
+  args: MarkCandidateOffLimitInput,
+): Promise<MarkCandidateOffLimitResult> {
+  const result = await client.markCandidateOffLimit(args);
+  return mapMarkCandidateOffLimitResult(result);
+}
+
+export async function executeMarkContactOffLimit(
+  client: RecruitCrmClient,
+  args: MarkContactOffLimitInput,
+): Promise<MarkContactOffLimitResult> {
+  const result = await client.markContactOffLimit(args);
+  return mapMarkContactOffLimitResult(result);
+}
+
+export async function executeMarkCompanyOffLimit(
+  client: RecruitCrmClient,
+  args: MarkCompanyOffLimitInput,
+): Promise<MarkCompanyOffLimitResult> {
+  const result = await client.markCompanyOffLimit(args);
+  return mapMarkCompanyOffLimitResult(result);
+}
+
+export async function executeMarkRecordsAvailable(
+  client: RecruitCrmClient,
+  args: MarkRecordsAvailableInput,
+): Promise<MarkRecordsAvailableResult> {
+  validateMarkRecordsAvailableInput(args);
+
+  const result = await client.markRecordsAvailable(args);
+  return mapMarkRecordsAvailableResult(args.record_type, result);
+}
+
 export async function executeGetCandidateJobAssignmentHiringStageHistory(
   client: RecruitCrmClient,
   candidateSlug: string,
@@ -3049,12 +6144,16 @@ export async function executeGetCandidateJobAssignmentHiringStageHistory(
   return mapCandidateJobAssignmentHiringStageHistoryResult(candidateSlug, result);
 }
 
-export async function executeListCandidateCustomFields(
+export async function executeListCustomFields(
   client: RecruitCrmClient,
+  entityType: ListCustomFieldsInput["entity_type"],
   includeNonSearchable = false,
-): Promise<CandidateCustomFieldListResult> {
-  const fields = await client.getCandidateCustomFields();
-  const filteredFields = filterCandidateCustomFields(fields, includeNonSearchable);
+): Promise<CustomFieldListResult> {
+  const allFields =
+    entityType === "candidates"
+      ? await client.getCandidateCustomFields()
+      : (await client.getCustomFields()).filter((f) => normalizeEntityType(f.entity_type) === entityType);
+  const filteredFields = filterCandidateCustomFields(allFields, includeNonSearchable);
 
   return {
     returned_count: filteredFields.length,
@@ -3062,18 +6161,38 @@ export async function executeListCandidateCustomFields(
   };
 }
 
-export async function executeGetCandidateCustomFieldDetails(
+export async function executeGetCustomFieldDetails(
   client: RecruitCrmClient,
   fieldId: number,
-): Promise<CandidateCustomFieldDetail> {
-  const fields = await client.getCandidateCustomFields();
+  entityType: GetCustomFieldDetailsInput["entity_type"],
+): Promise<CustomFieldDetail> {
+  const fields =
+    entityType === "candidates"
+      ? await client.getCandidateCustomFields()
+      : (await client.getCustomFields()).filter(
+          (item) => normalizeEntityType(item.entity_type) === entityType,
+        );
   const field = fields.find((item) => item.field_id === fieldId);
 
   if (!field) {
-    throw new RecruitCrmApiError(`Unknown candidate custom field field_id: ${fieldId}.`);
+    throw new RecruitCrmApiError(`Unknown custom field field_id: ${fieldId} for entity type "${entityType}".`);
   }
 
   return mapCandidateCustomFieldDetail(field);
+}
+
+function normalizeEntityType(raw: string | undefined): string | undefined {
+  if (!raw) return undefined;
+  const lower = raw.trim().toLowerCase();
+  // API may return singular ("candidate") — normalize to plural form used in tool inputs
+  const singularToPlural: Record<string, string> = {
+    candidate: "candidates",
+    contact: "contacts",
+    company: "companies",
+    job: "jobs",
+    deal: "deals",
+  };
+  return singularToPlural[lower] ?? lower;
 }
 
 export async function executeGetCustomFieldDependencies(
@@ -3166,7 +6285,7 @@ async function assertNoCreateCandidateDuplicates(
     .join("; ");
 
   throw new RecruitCrmApiError(
-    `Potential duplicate candidate found before create_candidate: ${examples}. Ask the user whether to create a duplicate or update an existing candidate. To create a confirmed duplicate, call create_candidate with allow_duplicate=true. To update, call create_candidate with existing_candidate_slug set to the chosen candidate slug.`,
+    `Potential duplicate candidate found before create_candidate: ${examples}. To create a confirmed duplicate, call create_candidate with allow_duplicate=true. To update the existing record, call update_candidate with candidate_slug set to the chosen candidate slug.`,
   );
 }
 
@@ -3196,6 +6315,21 @@ function validateRelatedFilters(args: { related_to?: string; related_to_type?: s
 
   if (hasRelatedTo !== hasRelatedToType) {
     throw new RecruitCrmApiError("related_to and related_to_type must be provided together.");
+  }
+}
+
+function validateActivityUpdateHasFields(
+  args: object,
+  ignoredFields: string[],
+  toolName: string,
+): void {
+  const ignored = new Set(ignoredFields);
+  const hasUpdateField = Object.entries(args).some(([key, value]) => !ignored.has(key) && value !== undefined);
+
+  if (!hasUpdateField) {
+    throw new RecruitCrmApiError(
+      `${toolName} requires at least one field to update in addition to ${ignoredFields.join(" and ")}.`,
+    );
   }
 }
 
@@ -3296,13 +6430,62 @@ function validateSearchContactsFilters(args: SearchContactsInput): void {
     "contact_slug",
   ];
 
-  const hasAtLeastOneFilter = filterKeys.some((key) => args[key] !== undefined);
+  const hasAtLeastOneFilter =
+    filterKeys.some((key) => args[key] !== undefined) ||
+    (args.custom_fields !== undefined && args.custom_fields.length > 0);
 
   if (!hasAtLeastOneFilter) {
     throw new RecruitCrmApiError(
       "search_contacts requires at least one filter. sort_by, sort_order, page, exact_search, and include_contact_info do not count by themselves.",
     );
   }
+}
+
+function validateMarkRecordsAvailableInput(args: MarkRecordsAvailableInput): void {
+  const hasContactCascade = args.mark_contact_available !== undefined;
+  const hasCandidateCascade = args.mark_candidate_available !== undefined;
+
+  if (args.record_type === "company") {
+    if (!hasContactCascade || !hasCandidateCascade) {
+      throw new RecruitCrmApiError(
+        "For company records, mark_records_available requires both mark_contact_available and mark_candidate_available. Use true to also mark the related records available, or false to leave that related record type unchanged.",
+      );
+    }
+
+    return;
+  }
+
+  if (hasContactCascade || hasCandidateCascade) {
+    throw new RecruitCrmApiError(
+      "mark_contact_available and mark_candidate_available are only supported when record_type is company.",
+    );
+  }
+}
+
+function validateCallLogCustomTypeId(customCallTypeId: number, callTypes: Array<{ id?: number | string | null; label?: string | number | null }>): void {
+  const match = callTypes.some((callType) => {
+    if (callType.id === undefined || callType.id === null || callType.id === "") {
+      return false;
+    }
+
+    return Number(callType.id) === customCallTypeId;
+  });
+
+  if (match) {
+    return;
+  }
+
+  const availableTypes = callTypes
+    .slice(0, 10)
+    .map((callType) => {
+      const label = callType.label === undefined || callType.label === null ? "Unlabeled" : String(callType.label);
+      return `${label} (${String(callType.id ?? "no id")})`;
+    })
+    .join(", ");
+
+  throw new RecruitCrmApiError(
+    `Unknown custom_call_type_id ${customCallTypeId}. Call list_call_types and use one of the returned call type IDs.${availableTypes ? ` Available examples: ${availableTypes}.` : ""}`,
+  );
 }
 
 function validateCallLogRelatedType(relatedToType: string | undefined): void {
@@ -3381,10 +6564,22 @@ function formatResult(
     | SearchCallLogsResult
     | SearchTasksResult
     | ListUsersResult
+    | ListTeamsResult
+    | ListCandidateQuestionsResult
+    | ListHiringPipelinesResult
+    | ListLanguagesAndProficienciesResult
+    | ListCurrenciesResult
+    | ListQualificationsResult
+    | ListXmlJobboardsResult
+    | ListCallTypesResult
     | ListMeetingTypesResult
     | ListNoteTypesResult
+    | ListOffLimitStatusesResult
     | ListTaskTypesResult
     | CreateCandidateResult
+    | CreateCompanyResult
+    | CreateJobResult
+    | CreateCallLogResult
     | CreateHotlistResult
     | CreateMeetingResult
     | CreateNoteResult
@@ -3393,16 +6588,29 @@ function formatResult(
     | CompanyDetailsResult
     | ContactDetailsResult
     | AddRecordsToHotlistResult
-    | JobDetail
+    | JobDetailsResult
     | JobAssignedCandidatesResult
     | CandidateHiringStagesResult
+    | ListPitchStagesResult
+    | PitchCandidateToContactResult
+    | UpdateCandidatePitchStageResult
+    | PitchHistoryResult
+    | PitchedRecordsResult
     | JobStatusesResult
     | CandidateJobAssignmentHiringStageHistoryResult
     | CandidateCustomFieldListResult
     | CandidateCustomFieldDetail
+    | CustomFieldDependenciesOutput
+    | PrepareClientBriefResult
+    | AnalyzeJobPipelineResult
     | AssignCandidateToJobResult
     | UpdateCandidateHiringStageResult
-    | AnalyzeJobPipelineResult,
+    | CreateContactResult
+    | ListContactStagesResult
+    | MarkCandidateOffLimitResult
+    | MarkContactOffLimitResult
+    | MarkCompanyOffLimitResult
+    | MarkRecordsAvailableResult,
 ) {
   return {
     content: [
@@ -3604,11 +6812,11 @@ function buildAnalyzeJobHeader(
     owner: toAnalyzeFiniteNumber(job.owner),
     owner_name: ownerName,
     company_slug: typeof job.company_slug === "string" ? job.company_slug : null,
-    hiring_pipeline_id: toAnalyzeFiniteNumber(job.hiring_pipeline_id),
     created_on: createdOn,
     days_open: createdOn ? analyzeDaysBetween(createdOn) : null,
     number_of_openings: toAnalyzeFiniteNumber(job.number_of_openings),
     view_url: `${ANALYZE_JOB_PIPELINE_VIEW_URL_PREFIX}${jobSlug}`,
+    hiring_pipeline_id: toAnalyzeFiniteNumber(job.hiring_pipeline_id),
   };
 }
 

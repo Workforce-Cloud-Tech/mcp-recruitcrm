@@ -1,20 +1,43 @@
 import type {
   RecruitCrmCandidateCustomField,
+  RecruitCrmCandidateQuestion,
+  RecruitCrmCandidateHiringStageUpdateResponse,
   RecruitCrmCandidateJobAssignmentHiringStageHistoryResponse,
+  RecruitCrmCandidateJobAssignmentResponse,
   RecruitCrmCallLogSearchResponse,
+  RecruitCrmCallLogTypeListResponse,
+  RecruitCrmCurrency,
   CandidateHistoryCreateResponse,
   CandidateDetail,
   CompanyDetail,
   ContactDetail,
+  CreatedCallLog,
   CreatedCandidate,
+  CreatedCompany,
+  CreatedContact,
   CreatedHotlist,
+  CreatedJob,
   CreatedNote,
   CreatedTask,
   JobDetail,
+  RecruitCrmHiringPipelineSummary,
   RecruitCrmHiringPipelineResponse,
+  RecruitCrmLanguage,
+  RecruitCrmMarkCandidateOffLimitResponse,
+  RecruitCrmMarkCompanyOffLimitResponse,
+  RecruitCrmMarkContactOffLimitResponse,
+  RecruitCrmMarkRecordsAvailableResponse,
+  RecruitCrmOffLimitStatusListResponse,
+  RecruitCrmPitchActionResponse,
+  RecruitCrmPitchPipelineResponse,
+  RecruitCrmPitchRecordsResponse,
+  RecruitCrmQualification,
   RecruitCrmJobAssignedCandidatesResponse,
+  RecruitCrmTeam,
+  RecruitCrmXmlJobboardsResponse,
   RecruitCrmCompanySearchResponse,
   RecruitCrmContactSearchResponse,
+  RecruitCrmContactStagePipelineResponse,
   RecruitCrmHotlistSearchResponse,
   RecruitCrmJobSearchResponse,
   RecruitCrmMeetingSearchResponse,
@@ -24,8 +47,6 @@ import type {
   RecruitCrmTaskSearchResponse,
   RecruitCrmTaskTypeListResponse,
   RecruitCrmUserListResponse,
-  RecruitCrmCandidateHiringStageUpdateResponse,
-  RecruitCrmCandidateJobAssignmentResponse,
 } from "../src/recruitcrm/types.js";
 
 export const sampleSearchResponse: RecruitCrmSearchResponse = {
@@ -149,6 +170,191 @@ export const sampleHiringPipelineResponse: RecruitCrmHiringPipelineResponse = [
   },
 ];
 
+export const samplePitchPipelineResponse: RecruitCrmPitchPipelineResponse = [
+  {
+    status_id: 1,
+    label: "Pitched",
+  },
+  {
+    status_id: 483,
+    label: "Waiting for response",
+  },
+];
+
+export const samplePitchCandidateResponse: RecruitCrmPitchActionResponse = {
+  success: true,
+  successCode: 200,
+  message: "Candidate Pitched Successfully",
+  data: {
+    candidate_slug: "candidate-pitch-sample-001",
+    contact_slug: "contact-pitch-sample-001",
+    status_id: 1,
+    status_label: "Pitched",
+    stage_date: "2026-06-03T08:28:59.000000Z",
+    remark: "",
+    created_on: "2026-06-03T08:28:59.000000Z",
+    created_by: 99069,
+    updated_on: "2026-06-03T08:28:59.000000Z",
+    updated_by: 99069,
+  },
+};
+
+export const sampleUpdateCandidatePitchStageResponse: RecruitCrmPitchActionResponse = {
+  success: true,
+  successCode: 200,
+  message: "Stage Updated Successfully",
+  data: {
+    candidate_slug: "candidate-pitch-sample-001",
+    contact_slug: "contact-pitch-sample-001",
+    status_id: 483,
+    status_label: "Waiting for response",
+    stage_date: "2026-06-03T08:30:00.000000Z",
+    remark: "Codex verification",
+    created_on: "2026-06-03T08:28:59.000000Z",
+    created_by: 99069,
+    updated_on: "2026-06-03T08:30:01.000000Z",
+    updated_by: 99069,
+  },
+};
+
+export const samplePitchHistoryResponse: RecruitCrmPitchRecordsResponse = {
+  data: {
+    records: [
+      {
+        contact_slug: "contact-pitch-sample-001",
+        status_id: 483,
+        candidate_status: "Waiting for response",
+        remark: "Codex verification",
+        stage_date: "2026-06-03T08:30:00.000000Z",
+        updated_by: 99069,
+        created_on: "2026-06-03T08:28:59.000000Z",
+        updated_on: "2026-06-03T08:30:01.000000Z",
+      },
+    ],
+  },
+  message: "Pitch candidate history fetched successfully",
+  status: true,
+  "status code": 200,
+};
+
+export const samplePitchedRecordsResponse: RecruitCrmPitchRecordsResponse = {
+  status: true,
+  statusCode: 200,
+  data: {
+    records: [
+      {
+        candidate_slug: "candidate-pitch-sample-001",
+        contact_slug: "contact-pitch-sample-001",
+        stage_date: "2026-06-03T08:30:00.000000Z",
+        status_id: 483,
+        candidate_status: "Waiting for response",
+        remark: "Codex verification",
+        contact_title: "Hiring Manager",
+        contact_name: "Sample Contact",
+        contact_email: "sample.contact@example.com",
+        contact_number: "+1-555-0199",
+        candidate_name: "Sample Candidate",
+        candidate_email: "sample.candidate@example.com",
+        candidate_contact_number: "+1-555-0100",
+        resume: "https://api.recruitcrm.io/private/resume.pdf",
+        candidate_position: "Software Developer",
+        created_by: 99069,
+        created_on: "2026-06-03T08:28:59.000000Z",
+        updated_by: 99069,
+        updated_on: "2026-06-03T08:30:01.000000Z",
+      },
+    ],
+  },
+};
+
+export const sampleOffLimitStatusListResponse: RecruitCrmOffLimitStatusListResponse = [
+  {
+    id: 7,
+    status_label: "Unavailable",
+    sequence_no: 1,
+    default: 0,
+    status_colour_id: "B5",
+  },
+  {
+    id: "213053",
+    status_label: "Placed",
+    sequence_no: "5",
+    default: 1,
+    status_colour_id: "A1",
+  },
+];
+
+export const sampleMarkCandidateOffLimitResponse: RecruitCrmMarkCandidateOffLimitResponse = {
+  candidate_slugs: ["candidate-sample-001", "candidate-sample-002"],
+  status_id: 7,
+  end_date: "29-06-2026",
+  reason: "Codex test",
+  remark: "Records Were Updated",
+};
+
+export const sampleMarkContactOffLimitResponse: RecruitCrmMarkContactOffLimitResponse = {
+  contact_slugs: ["contact-sample-001"],
+  status_id: 7,
+  end_date: "29-06-2026",
+  reason: "Codex test",
+  remark: "Records Were Updated",
+};
+
+export const sampleMarkCompanyOffLimitResponse: RecruitCrmMarkCompanyOffLimitResponse = {
+  company_slugs: ["company-sample-001"],
+  status_id: 7,
+  end_date: "29-06-2026",
+  reason: "Codex test",
+  remark: "Records Were Updated",
+};
+
+export const sampleMarkCandidateAvailableResponse: RecruitCrmMarkRecordsAvailableResponse = {
+  candidate_slugs: ["candidate-sample-001", "candidate-sample-002"],
+  remark: "Records Were Updated",
+};
+
+export const sampleMarkContactAvailableResponse: RecruitCrmMarkRecordsAvailableResponse = {
+  contact_slugs: ["contact-sample-001"],
+  remark: "Records Were Updated",
+};
+
+export const sampleMarkCompanyAvailableResponse: RecruitCrmMarkRecordsAvailableResponse = {
+  company_slugs: ["company-sample-001"],
+  mark_contact_available: false,
+  mark_candidate_available: true,
+  remark: "Records Were Updated",
+};
+
+export const sampleCandidateHiringStageUpdateResponse: RecruitCrmCandidateHiringStageUpdateResponse = {
+  job_slug: "job-sample-001",
+  candidate_slug: "candidate-sample-001",
+  status: {
+    status_id: 7006,
+    label: "Reschedule Interview",
+  },
+  remark: "<p>Shortlisted because xyz</p>",
+  stage_date: "2020-03-25T16:14:28.000000Z",
+  visibility: 1,
+  shared_list_url: "https://recruitcrm.io/assigned_candidates/618171762938459",
+  updated_on: "2026-05-13T17:01:46.000000Z",
+  updated_by: 453,
+};
+
+export const sampleCandidateJobAssignmentResponse: RecruitCrmCandidateJobAssignmentResponse = {
+  job_slug: "job-sample-001",
+  candidate_slug: "candidate-sample-001",
+  status: {
+    status_id: 1,
+    label: "Assigned",
+  },
+  remark: null,
+  stage_date: "2026-05-19T08:41:32.000000Z",
+  visibility: 0,
+  shared_list_url: null,
+  updated_on: "2026-05-19T08:41:32.000000Z",
+  updated_by: 453,
+};
+
 export const sampleCandidateCustomFieldsResponse: RecruitCrmCandidateCustomField[] = [
   {
     field_id: 34,
@@ -265,45 +471,37 @@ export const sampleJobSearchResponse: RecruitCrmJobSearchResponse = {
       xml_feeds: [null],
       resource_url: "https://app.recruitcrm.io/job/job-sample-001",
       shared_job_image: "https://app.recruitcrm.io/assets/images/default-share.png",
-      hiring_pipeline_id: 5067,
       targetcompanies: [
         {
           name: "Sample Target Company",
           slug: "company-sample-target-001",
         },
       ],
+      hiring_pipeline_id: 5067,
     },
   ],
 };
 
-export const sampleCandidateHiringStageUpdateResponse: RecruitCrmCandidateHiringStageUpdateResponse = {
-  job_slug: "job-sample-001",
-  candidate_slug: "candidate-sample-001",
-  status: {
-    status_id: 7006,
-    label: "Reschedule Interview",
+export const sampleCreatedJobResponse: CreatedJob = {
+  ...sampleJobSearchResponse.data[0],
+  id: 951,
+  slug: "job-created-sample-001",
+  name: "Create Operations Analyst",
+  company_slug: "company-sample-001",
+  contact_slug: "contact-sample-001",
+  job_status: {
+    id: 1,
+    label: "Open",
   },
-  remark: "Rescheduled at candidate's request.",
-  stage_date: "2026-05-19T10:00:00.000000Z",
-  visibility: 1,
-  shared_list_url: null,
-  updated_on: "2026-05-19T10:01:00.000000Z",
-  updated_by: 42,
-};
-
-export const sampleCandidateJobAssignmentResponse: RecruitCrmCandidateJobAssignmentResponse = {
-  job_slug: "job-sample-001",
-  candidate_slug: "candidate-sample-001",
-  status: {
-    status_id: 1,
-    label: "Assigned",
+  owner: {
+    id: 453,
+    first_name: "Sample",
+    last_name: "Owner",
   },
-  remark: null,
-  stage_date: "2026-05-19T09:00:00.000000Z",
-  visibility: 1,
-  shared_list_url: null,
-  updated_on: "2026-05-19T09:01:00.000000Z",
-  updated_by: 42,
+  enable_job_application_form: 0,
+  application_form_url: null,
+  created_on: "2026-05-27T09:00:00.000000Z",
+  updated_on: "2026-05-27T09:00:00.000000Z",
 };
 
 export const sampleCompanySearchResponse: RecruitCrmCompanySearchResponse = {
@@ -363,6 +561,20 @@ export const sampleCompanyDetailResponse: CompanyDetail = {
   slug: "company-detail-sample-001",
   logo: "https://api.recruitcrm.io/v1/companies/company-detail-sample-001/logo/example",
   resource_url: "https://app.recruitcrm.io/company/company-detail-sample-001",
+};
+
+export const sampleCreatedCompanyResponse: CreatedCompany = {
+  ...sampleCompanySearchResponse.data[0],
+  id: 409,
+  slug: "company-created-sample-001",
+  company_name: "Create Holdings",
+  website: "https://www.create-holdings.test",
+  owner: 453,
+  created_by: 453,
+  updated_by: 453,
+  created_on: "2026-05-21T09:00:00.000000Z",
+  updated_on: "2026-05-21T09:00:00.000000Z",
+  resource_url: "https://app.recruitcrm.io/company/company-created-sample-001",
 };
 
 export const sampleContactSearchResponse: RecruitCrmContactSearchResponse = {
@@ -525,6 +737,67 @@ export const sampleUserListResponseBareTeams: RecruitCrmUserListResponse = [
     teams: [1435, 2253, 9871],
   },
 ];
+
+export const sampleTeamListResponse: RecruitCrmTeam[] = [
+  {
+    team_id: 1435,
+    team_name: "Legal Recruitment Team",
+    users: [453, 999, 3557],
+  },
+  {
+    team_id: "2253",
+    team_name: "US Team",
+    users: [
+      {
+        id: 101,
+        first_name: "Alex",
+        last_name: "Kim",
+        email: "alex@example.com",
+        contact_number: "+1-555-0101",
+        avatar: "https://example.com/avatar/alex.png",
+      },
+    ],
+  },
+];
+
+export const sampleCandidateQuestionListResponse: RecruitCrmCandidateQuestion[] = [
+  { id: 1, question: "Are you authorized to work in the United States?" },
+  { id: "2", question: "What is your expected start date?" },
+  { id: 3, question: "Are you willing to relocate?" },
+];
+
+export const sampleHiringPipelineListResponse: RecruitCrmHiringPipelineSummary[] = [
+  { id: 0, name: "Master Hiring Pipeline" },
+  { id: 5067, name: "Executive Search Pipeline" },
+];
+
+export const sampleLanguageListResponse: RecruitCrmLanguage[] = [
+  { language_id: 1, code: "en", language_name: "English" },
+  { language_id: 2, code: "es", language_name: "Spanish" },
+  { language_id: 3, code: "fr", language_name: "French" },
+];
+
+export const sampleCurrencyListResponse: RecruitCrmCurrency[] = [
+  { currency_id: 1, code: "USD", country: "United States", currency: "US Dollar", symbol: "$" },
+  { currency_id: 2, code: "GBP", country: "United Kingdom", currency: "Pound Sterling", symbol: "GBP" },
+  { currency_id: 3, code: "INR", country: "India", currency: "Indian Rupee", symbol: "INR" },
+];
+
+export const sampleQualificationListResponse: RecruitCrmQualification[] = [
+  { qualification_id: 1, label: "Bachelor's Degree" },
+  { qualification_id: 2, label: "Master's Degree" },
+  { qualification_id: 3, label: "Doctorate" },
+];
+
+export const sampleXmlJobboardsResponse: RecruitCrmXmlJobboardsResponse = {
+  default_xml_feeds: [
+    { id: 1, label: "Indeed" },
+    { id: 2, label: "LinkedIn" },
+  ],
+  custom_xml_feeds: [
+    { id: 10, label: "Company Careers" },
+  ],
+};
 
 export const sampleJobDetailResponse: JobDetail = {
   id: 313,
@@ -905,6 +1178,35 @@ export const sampleCallLogSearchResponse: RecruitCrmCallLogSearchResponse = {
   ],
 };
 
+export const sampleCallLogTypeListResponse: RecruitCrmCallLogTypeListResponse = [
+  { id: 1, label: "Discovery Call" },
+  { id: 2, label: "Pitch Attempt" },
+  { id: 3, label: "Follow Up" },
+];
+
+export const sampleCreatedCallLogResponse: CreatedCallLog = {
+  id: 498700,
+  call_type: "CALL_OUTGOING",
+  custom_call_type: { id: 1, label: "Discovery Call" },
+  call_started_on: "2026-05-20T10:00:00.000000Z",
+  contact_number: "+1-555-0101",
+  call_notes: "Discussed requirements",
+  related_to: "candidate-related-sample-001",
+  related_to_type: "candidate",
+  duration: 300,
+  created_on: "2026-05-20T10:05:00.000000Z",
+  updated_on: "2026-05-20T10:05:00.000000Z",
+  created_by: 453,
+  updated_by: 453,
+  associated_candidates: ["candidate-related-sample-001", "candidate-related-sample-002"],
+  associated_contacts: [],
+  associated_companies: [],
+  associated_jobs: [],
+  associated_deals: [],
+  collaborator_users: [34, 99],
+  collaborator_teams: [1435],
+};
+
 export const sampleCandidateJobAssignmentHiringStageHistoryResponse: RecruitCrmCandidateJobAssignmentHiringStageHistoryResponse =
   [
     {
@@ -1089,3 +1391,80 @@ export const sampleCandidateDetailResponse: CandidateDetail = {
   off_limit_reason: null,
   off_limit_end_date: null,
 };
+
+export const sampleContactCustomFieldsResponse: RecruitCrmCandidateCustomField[] = [
+  {
+    field_id: 12,
+    entity_type: "contact",
+    field_type: "multiselect",
+    field_name: "Department",
+    default_value: "Finance,Auto,Insurance,Tech",
+  },
+  {
+    field_id: 28,
+    entity_type: "contact",
+    field_type: "dropdown",
+    field_name: "Color coding",
+    default_value: "Red,Green,Blue",
+  },
+];
+
+export const sampleJobCustomFieldsResponse: RecruitCrmCandidateCustomField[] = [
+  {
+    field_id: 40,
+    entity_type: "job",
+    field_type: "dropdown",
+    field_name: "Job Outcome",
+    default_value: "Placed,Lost to competitor,Converted to Perm",
+  },
+  {
+    field_id: 14,
+    entity_type: "job",
+    field_type: "dropdown",
+    field_name: "Color",
+    default_value: "🔴,🟡,🟢",
+  },
+];
+
+export const sampleCompanyCustomFieldsResponse: RecruitCrmCandidateCustomField[] = [
+  {
+    field_id: 2,
+    entity_type: "company",
+    field_type: "checkbox",
+    field_name: "PE Owned",
+    default_value: null,
+  },
+  {
+    field_id: 10,
+    entity_type: "company",
+    field_type: "multiselect",
+    field_name: "PE Ownership",
+    default_value: "Blackstone,KKR,Vista Equity Partners",
+  },
+];
+
+export const sampleCreatedContactResponse: CreatedContact = {
+  id: 20591,
+  slug: "contact-created-sample-001",
+  first_name: "Jane",
+  last_name: "Smith",
+  email: "jane.smith@example.com",
+  contact_number: "+1-555-0120",
+  designation: "VP Sales",
+  company_slug: "company-sample-001",
+  city: "New York",
+  locality: "",
+  address: "",
+  created_on: "2026-05-21T10:00:00.000000Z",
+  updated_on: "2026-05-21T10:00:00.000000Z",
+  owner: 453,
+  created_by: 453,
+  updated_by: 453,
+  resource_url: "https://app.recruitcrm.io/contact/contact-created-sample-001",
+};
+
+export const sampleContactStagePipelineResponse: RecruitCrmContactStagePipelineResponse = [
+  { stage_id: 1337, label: "Secondary Contact" },
+  { stage_id: 93466, label: "Lead" },
+  { stage_id: 227158, label: "Active Client" },
+];
