@@ -2,7 +2,7 @@
   "manifest_version": "0.2",
   "name": "recruitcrm-mcp-server",
   "display_name": "Recruit CRM",
-  "version": "0.8.0",
+  "version": "0.8.1",
   "description": "Search candidates & jobs, analyze hiring pipelines, manage tasks & hotlists, and run your full recruiting workflow from any AI tool.",
   "icon": "icon.png",
   "long_description": "Connect your Recruit CRM account to Claude and other AI tools. Search and update candidates, jobs, companies, and contacts. Dig into notes, tasks, meetings, call logs, and hiring stage history. Build and manage hotlists, analyze pipeline bottlenecks and idle candidates with detailed time-to-hire metrics, work with custom fields and their nested dependencies, and get up to speed before any candidate or client interaction.",
