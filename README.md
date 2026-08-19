@@ -1,10 +1,33 @@
-# Recruit CRM MCP Server
+> [!CAUTION]
+> **⚠️ ATTENTION: Legacy Local Recruit CRM MCP Server: DEPRECATED**
+>
+> **What this is:** This repository contains the legacy **local stdio Recruit CRM MCP server**. It runs locally and connects directly to the Recruit CRM Public API using an account-wide API key. It is not the current official remote OAuth-based Recruit CRM MCP and is not recommended for new installations.
+>
+> Use Recruit CRM's latest stable MCP instead:
+>
+> **Official remote MCP endpoint:** `https://agent.recruitcrm.io/mcp`
+>
+> The official MCP uses per-user OAuth with role-based permissions and includes Boolean and advanced filters with an app-like search experience, client briefs, pipeline analysis, and support for MCP-compatible clients, including Claude, ChatGPT, Perplexity, and others.
+>
+> **Existing API-key users**
+>
+> The old account-wide API-key connection no longer works. To reconnect:
+>
+> 1. Delete the existing Recruit CRM connection in your AI client.
+> 2. In Recruit CRM, go to **Admin Settings → User → Roles & Permissions** and enable **MCP Access** for your role.
+> 3. Reconnect using OAuth by following the [official Recruit CRM MCP guide](https://help.recruitcrm.io/en/articles/14485570-recruit-crm-mcp-model-context-protocol).
+>
+> ⚠️ **Security:** If the old API key is no longer used elsewhere, rotate or revoke it. It still grants full account access to anyone who holds it.
 
-Local `stdio` MCP server for [Recruit CRM](https://recruitcrm.io)'s Public API. Access your candidates, jobs, companies, tasks, meetings, notes, call logs, and more directly from AI tools like Claude and Codex.
+# Legacy Local Recruit CRM MCP Server
 
-## Install
+Local `stdio` MCP server for [Recruit CRM](https://recruitcrm.io)'s Public API. This legacy server provides access to candidates, jobs, companies, tasks, meetings, notes, call logs, and more from AI tools like Claude and Codex.
 
-### Option 1: Claude Desktop Extension (Recommended)
+## Legacy installation
+
+The instructions below are retained for existing users of this deprecated server. New users should follow the [official Recruit CRM MCP setup guide](https://help.recruitcrm.io/en/articles/14485570-recruit-crm-mcp-model-context-protocol).
+
+### Option 1: Claude Desktop Extension
 
 1. Download and install [Claude Desktop](https://claude.ai/download), then sign in
 2. Download the latest `recruitcrm-mcp-server.mcpb` from the [Releases](https://github.com/saurav-rcrm/mcp-recruitcrm/releases) page
@@ -102,15 +125,15 @@ Ownership prompts: when a user says "my", "mine", or "owned by me", treat that a
 | `get_job_details` | Fetch one job by slug and return the raw Recruit CRM payload. |
 | `get_company_details` | Fetch full details for up to 10 companies in parallel by slug. Returns `{ requested_count, successful_count, failed_count, companies, errors }` and does not fail the whole call when one slug is bad. |
 | `get_contact_details` | Fetch full details for up to 10 contacts in parallel by slug. Returns `{ requested_count, successful_count, failed_count, contacts, errors }` and does not fail the whole call when one slug is bad. |
-| `get_job_assigned_candidates` | Fetch assigned candidates for one job and return compact assignment summaries. The job's `hiring_pipeline_id` is included — use `hiring_pipeline_id 0` with `list_candidate_hiring_stages` for the master pipeline stages. |
+| `get_job_assigned_candidates` | Fetch assigned candidates for one job and return compact assignment summaries. The job's `hiring_pipeline_id` is included. Use `hiring_pipeline_id 0` with `list_candidate_hiring_stages` for the master pipeline stages. |
 | `list_candidate_hiring_stages` | List compact candidate hiring stage rows for a hiring pipeline. Pass `hiring_pipeline_id 0` (default) for the Master Hiring Pipeline or a job's `hiring_pipeline_id` for job-specific stages. Returns `status_id` values needed for `update_candidate_hiring_stage`. |
-| `assign_candidate_to_job` | Assign a candidate to a job. Requires `candidate_slug`, `job_slug`, and `updated_by` (Recruit CRM user id). Write tool — use only when explicitly requested. |
-| `update_candidate_hiring_stage` | Update a candidate's hiring stage for a specific job assignment. Requires `candidate_slug`, `job_slug`, `status_id` (resolve via `list_candidate_hiring_stages`), `stage_date`, and `updated_by`. Write tool — use only when explicitly requested. |
+| `assign_candidate_to_job` | Assign a candidate to a job. Requires `candidate_slug`, `job_slug`, and `updated_by` (Recruit CRM user id). Write tool. Use only when explicitly requested. |
+| `update_candidate_hiring_stage` | Update a candidate's hiring stage for a specific job assignment. Requires `candidate_slug`, `job_slug`, `status_id` (resolve via `list_candidate_hiring_stages`), `stage_date`, and `updated_by`. Write tool. Use only when explicitly requested. |
 | `list_job_statuses` | List job pipeline statuses (Open, Closed, On Hold, plus custom labels) with `id` and `label` for resolving status names to the numeric `job_status_id` used by `search_jobs`. |
 | `get_candidate_job_assignment_hiring_stage_history` | Fetch one candidate's job assignment hiring stage history. |
 | `list_candidate_custom_fields` | List curated candidate custom field metadata. Set `include_non_searchable: true` to also include fields that cannot be used as search filters (e.g. file, user, company fields). |
 | `get_candidate_custom_field_details` | Fetch curated details for one candidate custom field, including full option values. |
-| `get_custom_field_dependencies` | Get parent-child dependency relationships for custom fields of a given entity type (`candidates`, `contacts`, `companies`, `jobs`, `deals`). Pass `field_id` to narrow results to the dependency subtree for one specific field. Call this before setting a child custom field — the parent field_id and its value must also be included in the `custom_fields` array or the API will reject the request with a dependency error. |
+| `get_custom_field_dependencies` | Get parent-child dependency relationships for custom fields of a given entity type (`candidates`, `contacts`, `companies`, `jobs`, `deals`). Pass `field_id` to narrow results to the dependency subtree for one specific field. Call this before setting a child custom field. The parent field_id and its value must also be included in the `custom_fields` array or the API will reject the request with a dependency error. |
 | `analyze_job_pipeline` | Diagnose a single job's hiring pipeline in one call: stage distribution, days-in-current-stage, idle candidates, bottleneck verdict, recent activity, and suggested next actions. Set `include_time_metrics: true` for time-to-hire and time-to-stage data (extra API calls; default false). |
 
 Most tools are **read-only** (`readOnlyHint: true`). `create_candidate`, `create_hotlist`, `add_records_to_hotlist`, `create_task`, `create_meeting`, `create_note`, `assign_candidate_to_job`, and `update_candidate_hiring_stage` are mutating tools and should only be used when explicitly requested by the user.
@@ -133,17 +156,17 @@ Recruit CRM entities follow the app URL pattern `https://app.recruitcrm.io/<enti
 
 ### Required
 
-- `RECRUITCRM_API_TOKEN` — your Recruit CRM API token
+- `RECRUITCRM_API_TOKEN`: your Recruit CRM API token
 
 ### Optional
 
-- `RECRUITCRM_BASE_URL` — default: `https://api.recruitcrm.io/v1`
-- `RECRUITCRM_TIMEOUT_MS` — default: `10000`
-- `RECRUITCRM_DEBUG_SCHEMA_ERRORS` — default: `false`
+- `RECRUITCRM_BASE_URL`: default `https://api.recruitcrm.io/v1`
+- `RECRUITCRM_TIMEOUT_MS`: default `10000`
+- `RECRUITCRM_DEBUG_SCHEMA_ERRORS`: default `false`
 
 ## Privacy And Security
 
-- Runs **locally** on your machine over `stdio` — no data sent to third parties
+- Runs **locally** on your machine over `stdio`; no data sent to third parties
 - API tokens read from environment variables only; stored securely in OS keychain when using the `.mcpb` extension
 - Search results exclude emails, phone numbers, and other sensitive fields by default
 - Search and detail tools are read-only by default
@@ -155,7 +178,7 @@ Recruit CRM entities follow the app URL pattern `https://app.recruitcrm.io/<enti
 **"Server disconnected" or "Failed to spawn process"**
 - Make sure Node.js ≥ 20 is installed ([nodejs.org](https://nodejs.org))
 - On Mac, use the full path to `npx` (run `which npx` in terminal to find it)
-- Use the `.mcpb` install option instead — it doesn't need Node set up
+- Use the `.mcpb` install option instead; it doesn't need Node set up
 
 **"Authentication failed" / 401 errors**
 - Verify your API token at Recruit CRM → Admin Settings → API
@@ -175,4 +198,4 @@ npm test
 
 ## License
 
-MIT — see [LICENSE](./LICENSE)
+MIT. See [LICENSE](./LICENSE)
